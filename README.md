@@ -8,6 +8,7 @@ require('phoenix-api')(ssbRpcApi, function(err, api) {
     throw err
 
   api.getMyId() // returns this user's id
+  api.getMyProfile() // returns this user's profile
 
   api.getMsg(key, cb) // get message data
   api.getNumReplies(key) // returns # of replies to a message

@@ -43,6 +43,9 @@ module.exports = function (ssb, cb) {
         getMyId: function () {
           return state.myid
         },
+        getMyProfile: function () {
+          return this.getProfile(state.myid)
+        },
 
         getMsg: function (key, cb) {
           ssb.get(key, cb)
