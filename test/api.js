@@ -6,38 +6,38 @@ tape('posts, replies, and inbox', function (t) {
   require('./util').newapi(function (err, api, ssb, feed) {
     if (err) throw err
 
-    api.postText('first', function (err, msg1, key1) {
+    api.postText('first', function (err, msg1) {
       if (err) throw err
-      t.equal(msg1.content.text, 'first')
+      t.equal(msg1.value.content.text, 'first')
 
-      api.postReply('second', key1, function (err, msg2, key2) {
+      api.postReply('second', msg1.key, function (err, msg2) {
         if (err) throw err
-        t.equal(msg2.content.text, 'second')
-        t.equal(msg2.content.repliesTo.msg, key1)
-        t.equal(api.getNumReplies(key1), 1)
+        t.equal(msg2.value.content.text, 'second')
+        t.equal(msg2.value.content.repliesTo.msg, msg1.key)
+        t.equal(api.getNumReplies(msg1.key), 1)
 
         api.getPosts(function (err, msgs) {
           if (err) throw err
           t.equal(msgs.length, 1)
-          t.equal(msgs[0].content.text, 'first')
+          t.equal(msgs[0].value.content.text, 'first')
 
-          api.getMsg(key1, function (err, msg1b) {
+          api.getMsg(msg1.key, function (err, msg1b) {
             if (err) throw err
-            t.equal(msg1b.content.text, 'first')
+            t.equal(msg1b.value.content.text, 'first')
 
-            api.getReplies(key1, function (err, replies) {
+            api.getReplies(msg1.key, function (err, replies) {
               if (err) throw err
               t.equal(replies.length, 1)
-              t.equal(replies[0].content.text, 'second')
+              t.equal(replies[0].value.content.text, 'second')
 
-              api.postText('hello @'+feed.id, function (err, msg3, key3) {
+              api.postText('hello @'+feed.id, function (err, msg3) {
                 if (err) throw err
 
                 api.getInbox(function (err, msgs) {
                   if (err) throw err
                   t.equal(msgs.length, 2)
-                  t.equal(msgs[0].content.text, 'hello @'+feed.id)
-                  t.equal(msgs[1].content.text, 'second')
+                  t.equal(msgs[0].value.content.text, 'hello @'+feed.id)
+                  t.equal(msgs[1].value.content.text, 'second')
                   t.end()
                 })
               })
@@ -66,18 +66,18 @@ tape('adverts', function (t) {
       api.getAdverts(function (err, ads) {
         if (err) throw err
         t.equal(ads.length, 6)
-        t.equal(ads[0].content.text, '6')
-        t.equal(ads[1].content.text, '5')
-        t.equal(ads[2].content.text, '4')
-        t.equal(ads[3].content.text, '3')
-        t.equal(ads[4].content.text, '2')
-        t.equal(ads[5].content.text, '1')
+        t.equal(ads[0].value.content.text, '6')
+        t.equal(ads[1].value.content.text, '5')
+        t.equal(ads[2].value.content.text, '4')
+        t.equal(ads[3].value.content.text, '3')
+        t.equal(ads[4].value.content.text, '2')
+        t.equal(ads[5].value.content.text, '1')
 
         api.getRandomAdverts(2, 5, function (err, ads) {
           if (err) throw err
           t.equal(ads.length, 2)
-          t.ok(ads[0].content.text != '1') // there's only a statistical chance this can fail
-          t.ok(ads[1].content.text != '1') // if it fails, the use of the random function is wrong
+          t.ok(ads[0].value.content.text != '1') // there's only a statistical chance this can fail
+          t.ok(ads[1].value.content.text != '1') // if it fails, the use of the random function is wrong
           t.end()
         })
       })
