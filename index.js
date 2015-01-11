@@ -87,6 +87,12 @@ module.exports = function (ssb, cb) {
         getGraph: function (type, cb) {
           ssb.friends.all(type, cb)
         },
+        getNames: function () {
+          return state.names
+        },
+        getName: function (id) {
+          return state.names[id]
+        },
         getNameById: function (id) {
           return state.names[id]
         },

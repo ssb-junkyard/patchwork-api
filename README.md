@@ -22,6 +22,8 @@ require('phoenix-api')(ssbRpcApi, function(err, api) {
   api.getProfile(id) // returns profile
   api.getAllProfiles() // returns all profiles in id->profile map
   api.getGraph(type, cb) // get friends graph (type may be 'follow', 'trust', or 'edge')
+  api.getNames() // returns map of id->names
+  api.getName(id) // returns user's name
   api.getNameById(id) // returns user's name
   api.getIdByName(name) // returns user's id
 
