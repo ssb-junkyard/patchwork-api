@@ -1,6 +1,6 @@
 {
   "name": "phoenix-api",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "methods for reading and writing to the log from the phoenix gui",
   "main": "index.js",
   "scripts": {
