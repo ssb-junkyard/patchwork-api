@@ -14,9 +14,10 @@ require('phoenix-api')(ssbRpcApi, function(err, api) {
   api.getNumReplies(key) // returns # of replies to a message
   api.getReplies(key, cb) // get replies to a message
 
-  api.getPosts({ start:, end: }, cb) // get post messages
-  api.getInbox({ start:, end: }, cb) // get post messages
-  api.getAdverts({ start:, end: }, cb) // get post messages
+  api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
+  api.getPosts({ start:, end: }, cb) // get post messages. start/end are indexes
+  api.getInbox({ start:, end: }, cb) // get post messages which reply to or mention the author. start/end are indexes
+  api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are indexes
   api.getRandomAdverts(num, oldest, cb) // get `num` adverts from the `oldest` most recent messages
 
   api.getProfile(id) // returns profile

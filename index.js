@@ -66,6 +66,22 @@ module.exports = function (ssb, cb) {
           cb(null, [])
         },
 
+        getFeed: function (opts, cb) {
+          opts = opts || {}
+          opts.keys = true
+          opts.limit = opts.limit || 30
+
+          // convert gt, gte, lt, lte so that you can do `getFeed({ gt: msg1, lt: msg2 })`
+          opts.gt  = msgToFeedDBKey(opts.gt)
+          opts.gte = msgToFeedDBKey(opts.gte)
+          opts.lt  = msgToFeedDBKey(opts.lt)
+          opts.lte = msgToFeedDBKey(opts.lte)
+
+          pull(
+            ssb.createFeedStream(opts),
+            pull.collect(cb)
+          )
+        },
         getPosts: listGetter(state.posts),
         getInbox: listGetter(state.inbox),
         getAdverts: listGetter(state.adverts),
@@ -175,6 +191,12 @@ module.exports = function (ssb, cb) {
           if (err) return cb(err)
           cb(null, { value: msg, key: key })
         }
+      }
+
+      // helper to convert gt,gte,lt,lte params from messages into proper keys for the feeddb index
+      function msgToFeedDBKey(v) {
+        if (v && v.key && v.value)
+          return [v.value.timestamp, v.value.author]
       }
     }))
   })

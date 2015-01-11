@@ -2,6 +2,37 @@ var multicb = require('multicb')
 var tape    = require('tape')
 var ssbKeys = require('ssb-keys')
 
+tape('feed', function (t) {
+  require('./util').newapi(function (err, api, ssb, feed) {
+    if (err) throw err
+
+    var done = multicb()
+    api.postText('1', done())
+    api.postText('2', done())
+    api.postText('3', done())
+    api.postText('4', done())
+    api.postText('5', done())
+    api.postText('6', done())
+    done(function (err) {
+      if (err) throw err
+
+      api.getFeed({ limit: 2, reverse: true }, function (err, msgs) {
+        if (err) throw err
+        t.equal(msgs[0].value.content.text, '6')
+        t.equal(msgs[1].value.content.text, '5')
+
+        api.getFeed({ limit: 2, reverse: true, lt: msgs[1] }, function (err, msgs) {
+          if (err) throw err
+          t.equal(msgs[0].value.content.text, '4')
+          t.equal(msgs[1].value.content.text, '3')
+
+          t.end()
+        })
+      })
+    })
+  })
+})
+
 tape('posts, replies, and inbox', function (t) {
   require('./util').newapi(function (err, api, ssb, feed) {
     if (err) throw err
