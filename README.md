@@ -22,9 +22,9 @@ api.startIndexing(function (err) {
   api.getThread(key, cb) // get full thread (replies, replies to replies, etc)
 
   api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
-  api.getPosts({ start:, end: }, cb) // get post messages. start/end are indexes
-  api.getInbox({ start:, end: }, cb) // get post messages which reply to or mention the author. start/end are indexes
-  api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are indexes
+  api.getPosts({ start:, end: }, cb) // get post messages. start/end are offsets
+  api.getInbox({ start:, end: }, cb) // get post messages which reply to or mention the author. start/end are offsets
+  api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are offsets
   api.getRandomAdverts(num, oldest, cb) // get `num` adverts from the `oldest` most recent messages
 
   api.getProfile(id) // returns profile
