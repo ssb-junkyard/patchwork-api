@@ -185,6 +185,12 @@ module.exports = function (ssb, cb) {
           if (!type   || typeof type != 'string')   return cb(new Error('param 1 `type` string is required'))
           if (!target || typeof target != 'string') return cb(new Error('param 2 `target` string is required'))
           ssb.add({ type: type, rel: 'un'+type+'s', feed: target }, wrapAddedMsg(cb))
+        },
+
+        // other
+
+        useInvite: function (invite, cb) {
+          ssb.invite.addMe(invite, cb)
         }
       }
       cb(null, api)

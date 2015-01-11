@@ -38,5 +38,7 @@ require('phoenix-api')(ssbRpcApi, function(err, api) {
 
   api.addEdge(type, target, cb) // publish new edge from self to target (type may be 'follow', 'trust', or 'edge')
   api.delEdge(type, target, cb) // publish deleted edge from self to target (type may be 'follow', 'trust', or 'edge')
+
+  api.useInvite(invite, cb)
 })
 ```
