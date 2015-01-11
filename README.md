@@ -3,9 +3,15 @@
 methods for reading and writing to the log from the phoenix gui
 
 ```js
-require('phoenix-api')(ssbRpcApi, function(err, api) {
+var api = require('phoenix-api')(ssbRpcApi)
+
+// initiate the indexing process
+// - call this any time the connection is created (eg on init, after disconnects)
+api.startIndexing(function (err) {
   if (err)
     throw err
+
+  // get functions only work after startIndexing has called its cb
 
   api.getMyId() // returns this user's id
   api.getMyProfile() // returns this user's profile

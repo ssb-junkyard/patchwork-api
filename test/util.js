@@ -15,7 +15,8 @@ exports.newapi = function (cb) {
       cb(null, sbot.friends.all(type))
     }
   }
-  createApi(ssbapi, function (err, api) {
+  var api = createApi(ssbapi)
+  api.startIndexing(function (err) {
     cb(err, api, sbot.ssb, sbot.feed)
   })
 }
