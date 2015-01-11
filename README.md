@@ -13,6 +13,7 @@ require('phoenix-api')(ssbRpcApi, function(err, api) {
   api.getMsg(key, cb) // get message data
   api.getNumReplies(key) // returns # of replies to a message
   api.getReplies(key, cb) // get replies to a message
+  api.getThread(key, cb) // get full thread (replies, replies to replies, etc)
 
   api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
   api.getPosts({ start:, end: }, cb) // get post messages. start/end are indexes
