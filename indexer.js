@@ -80,8 +80,10 @@ module.exports = function(state) {
 
       if (!isreply)
         state.posts.unshift(msg.key)
-      if (msg.value.author === state.myid)
-        state.myposts.unshift(msg.key)
+      if (!state.postsByAuthor[msg.value.author])
+        state.postsByAuthor[msg.value.author] = []
+      state.postsByAuthor[msg.value.author].unshift(msg.key)
+      console.log('indexed post by', msg.value.author)
     },
 
     advert: function(msg) {

@@ -80,6 +80,42 @@ tape('posts, replies, and inbox', function (t) {
   })
 })
 
+tape('posts by author', function (t) {
+  require('./util').newapi(function (err, api, ssb, feed) {
+    if (err) throw err
+
+    var alice = ssb.createFeed(ssbKeys.generate())
+    var bob   = ssb.createFeed(ssbKeys.generate())
+
+    var done = multicb()
+    api.postText('post by me 1', done())
+    api.postText('post by me 2', done())
+    alice.add({ type: 'post', text: 'post by alice' }, done())
+    bob  .add({ type: 'post', text: 'post by bob' }, done())
+    done(function (err) {
+      if (err) throw err
+      // kludge: wait for the alice.add and bob.add to be indexed
+      setTimeout(function () {
+        var done = multicb({ pluck: 1 })
+        api.getPostsBy(feed.id, done())
+        api.getPostsBy(alice.id, done())
+        api.getPostsBy(bob.id, done())
+
+        done(function (err, posts) {
+          if (err) throw err
+          t.equal(posts[0].length, 2)
+          t.equal(posts[0][0].value.content.text, 'post by me 2')
+          t.equal(posts[0][1].value.content.text, 'post by me 1')
+          t.equal(posts[1][0].value.content.text, 'post by alice')
+          t.equal(posts[2][0].value.content.text, 'post by bob')
+
+          t.end()
+        })
+      }, 100)
+    })
+  })
+})
+
 tape('adverts', function (t) {
   require('./util').newapi(function (err, api, ssb, feed) {
     if (err) throw err

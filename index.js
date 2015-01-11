@@ -14,7 +14,8 @@ module.exports = function (ssb, cb) {
 
     // indexes
     posts: [],
-    myposts: [], // this user's posts
+    myposts: [], // reused by `postsByAuthor` for the local user
+    postsByAuthor: {},
     replies: {}, // maps: post key -> [reply keys]
     inbox: [],
     adverts: []
@@ -27,6 +28,7 @@ module.exports = function (ssb, cb) {
     if (err)
       return cb(err)
     state.myid = user.id
+    state.postsByAuthor[user.id] = state.myposts // alias myposts inside postsByAuthor
 
     // index all current msgs
     var ts = Date.now()
@@ -83,6 +85,9 @@ module.exports = function (ssb, cb) {
           )
         },
         getPosts: listGetter(state.posts),
+        getPostsBy: function (author, opts, cb) {
+          listGetter(state.postsByAuthor[author] || [])(opts, cb)
+        },
         getInbox: listGetter(state.inbox),
         getAdverts: listGetter(state.adverts),
         getRandomAdverts: function (num, oldest, cb) {
