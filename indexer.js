@@ -83,7 +83,6 @@ module.exports = function(state) {
       if (!state.postsByAuthor[msg.value.author])
         state.postsByAuthor[msg.value.author] = []
       state.postsByAuthor[msg.value.author].unshift(msg.key)
-      console.log('indexed post by', msg.value.author)
     },
 
     advert: function(msg) {

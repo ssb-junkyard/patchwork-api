@@ -67,6 +67,35 @@ module.exports = function (ssb, cb) {
           }
           cb(null, [])
         },
+        getThread: function (key, cb) {
+          var done = multicb()
+          var thread = { key: key, value: null, replies: null }
+          get(thread, done())
+
+          function get(t, cb) {
+            api.getMsg(t.key, function (err, msg) {
+              if (err) return cb(err)
+              t.value = msg.value
+              cb(null, t)
+            })
+            replies(t)
+          }
+
+          function replies(t) {
+            if (!state.replies[t.key])
+              return
+            t.replies = state.replies[t.key].map(function (rkey) {
+              var rt = { key: rkey, value: null, replies: null }
+              get(rt, done())
+              return rt
+            })
+          }
+
+          done(function (err) {
+            if (err) return cb(err)
+            cb(null, thread)
+          })
+        },
 
         getFeed: function (opts, cb) {
           opts = opts || {}

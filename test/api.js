@@ -80,6 +80,50 @@ tape('posts, replies, and inbox', function (t) {
   })
 })
 
+
+tape('threads', function (t) {
+  require('./util').newapi(function (err, api, ssb, feed) {
+    if (err) throw err
+
+    api.postText('top', function (err, msg1) {
+      if (err) throw err
+      t.equal(msg1.value.content.text, 'top')
+
+      var done = multicb({ pluck: 1 })
+      api.postReply('reply 1', msg1.key, done())
+      api.postReply('reply 2', msg1.key, done())
+      done(function (err, replies) {
+        if (err) throw err
+        t.equal(replies.length, 2)
+
+        var done = multicb({ pluck: 1 })
+        api.postReply('reply 1 reply 1', replies[0].key, done())
+        api.postReply('reply 1 reply 2', replies[0].key, done())
+        api.postReply('reply 2 reply 1', replies[1].key, done())
+        done(function (err, replies2) {
+          if (err) throw err
+          t.equal(replies2.length, 3)
+
+          api.getThread(msg1.key, function (err, thread) {
+            if (err) throw err
+            t.equal(thread.value.content.text, 'top')
+            t.equal(thread.replies.length, 2)
+            t.equal(thread.replies[0].value.content.text, 'reply 2')
+            t.equal(thread.replies[1].value.content.text, 'reply 1')
+            t.equal(thread.replies[0].replies.length, 1)
+            t.equal(thread.replies[0].replies[0].value.content.text, 'reply 2 reply 1')
+            t.equal(thread.replies[1].replies.length, 2)
+            t.equal(thread.replies[1].replies[0].value.content.text, 'reply 1 reply 2')
+            t.equal(thread.replies[1].replies[1].value.content.text, 'reply 1 reply 1')
+
+            t.end()
+          })
+        })
+      })
+    })
+  })
+})
+
 tape('posts by author', function (t) {
   require('./util').newapi(function (err, api, ssb, feed) {
     if (err) throw err
