@@ -133,8 +133,8 @@ module.exports = function(state) {
   }
 
   fn.whenIndexed = function (cb) {
-    return function (err, msg, key) {
-      cbsAwaitingIndex[key] = cb.bind(null, err, msg, key)
+    return function (err, msg) {
+      cbsAwaitingIndex[msg.key] = cb.bind(null, err, msg)
     }
   }
 
