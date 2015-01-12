@@ -29,7 +29,7 @@ api.startIndexing(function (err) {
   api.getPosts({ start:, end: }, cb) // get post messages. start/end are offsets
   api.getPostCount() // get number of post messages
   api.getInbox({ start:, end: }, cb) // get post messages which reply to or mention the author. start/end are offsets
-  api.getIndexCount() // get number of post messages in the inbox
+  api.getInboxCount() // get number of post messages in the inbox
   api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are offsets
   api.getAdvertCount() // get number of adverts
   api.getRandomAdverts(num, oldest, cb) // get `num` adverts from the `oldest` most recent messages
