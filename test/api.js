@@ -61,15 +61,25 @@ tape('posts, replies, and inbox', function (t) {
               t.equal(replies.length, 1)
               t.equal(replies[0].value.content.text, 'second')
 
-              api.postText('hello @'+feed.id, function (err, msg3) {
+              api.getPostParent(replies[0].key, function (err, parent) {
                 if (err) throw err
+                t.equal(parent.key, msg1.key)
 
-                api.getInbox(function (err, msgs) {
+                api.getPostParent(msg1.key, function (err, parent2) {
                   if (err) throw err
-                  t.equal(msgs.length, 2)
-                  t.equal(msgs[0].value.content.text, 'hello @'+feed.id)
-                  t.equal(msgs[1].value.content.text, 'second')
-                  t.end()
+                  t.assert(!parent2)
+
+                  api.postText('hello @'+feed.id, function (err, msg3) {
+                    if (err) throw err
+
+                    api.getInbox(function (err, msgs) {
+                      if (err) throw err
+                      t.equal(msgs.length, 2)
+                      t.equal(msgs[0].value.content.text, 'hello @'+feed.id)
+                      t.equal(msgs[1].value.content.text, 'second')
+                      t.end()
+                    })
+                  })
                 })
               })
             })

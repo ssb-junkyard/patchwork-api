@@ -14,7 +14,7 @@ module.exports = function (ssb) {
     posts: [],
     myposts: [], // reused by `postsByAuthor` for the local user
     postsByAuthor: {},
-    replies: {}, // maps: post key -> [reply keys]
+    threads: {}, // maps: post key -> { replies: [keys], parent:, numThreadReplies: }
     inbox: [],
     adverts: []
   }
@@ -60,15 +60,24 @@ module.exports = function (ssb) {
       })
     },
     getNumReplies: function(key) {
-      return (state.replies[key]) ? state.replies[key].length : 0
+      return (state.threads[key]) ? state.threads[key].replies.length : 0
     },
     getReplies: function (key, cb) {
-      if (key in state.replies && state.replies[key].length) {
+      if (key in state.threads && state.threads[key].replies.length) {
         var done = multicb({ pluck: 1 })
-        state.replies[key].forEach(function (rkey) { api.getMsg(rkey, done()) })
+        state.threads[key].replies.forEach(function (rkey) { api.getMsg(rkey, done()) })
         return done(cb)
       }
       cb(null, [])
+    },
+    getPostParent: function (key, cb) {
+      if (key in state.threads && state.threads[key].parent)
+        api.getMsg(state.threads[key].parent, cb)
+      else
+        cb(null, null)
+    },
+    getNumThreadReplies: function(key) {
+      return (state.threads[key]) ? state.threads[key].numThreadReplies : 0
     },
     getThread: function (key, cb) {
       var done = multicb()
@@ -85,9 +94,9 @@ module.exports = function (ssb) {
       }
 
       function replies(t) {
-        if (!state.replies[t.key])
+        if (!state.threads[t.key])
           return
-        t.replies = state.replies[t.key].map(function (rkey) {
+        t.replies = state.threads[t.key].replies.map(function (rkey) {
           var rt = { key: rkey, value: null, replies: null }
           get(rt, done())
           return rt

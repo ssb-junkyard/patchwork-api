@@ -61,10 +61,17 @@ module.exports = function(state) {
         if (link.rel == 'replies-to' && link.msg) {
           isreply = true
 
-          // index reply
-          if (!state.replies[link.msg])
-            state.replies[link.msg] = []
-          state.replies[link.msg].unshift(msg.key)
+          // index thread
+          if (!state.threads[link.msg])
+            state.threads[link.msg] = { parent: null, replies: [], numThreadReplies: 0 }
+          state.threads[link.msg].replies.unshift(msg.key)
+          state.threads[msg.key] = { parent: link.msg, replies: [], numThreadReplies: 0 }
+
+          var t = state.threads[link.msg]
+          do {
+            t.numThreadReplies++
+            t = t.parent
+          } while (t)
 
           // add to inbox if it's a reply to this user's message
           if (state.myposts.indexOf(link.msg) !== -1 && !isinboxed) {
