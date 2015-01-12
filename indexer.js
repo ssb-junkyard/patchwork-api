@@ -70,7 +70,7 @@ module.exports = function(state) {
           var t = state.threads[link.msg]
           do {
             t.numThreadReplies++
-            t = t.parent
+            t = state.threads[t.parent]
           } while (t)
 
           // add to inbox if it's a reply to this user's message

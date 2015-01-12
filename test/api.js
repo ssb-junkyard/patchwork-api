@@ -125,6 +125,7 @@ tape('threads', function (t) {
             t.equal(thread.replies[1].replies.length, 2)
             t.equal(thread.replies[1].replies[0].value.content.text, 'reply 1 reply 2')
             t.equal(thread.replies[1].replies[1].value.content.text, 'reply 1 reply 1')
+            t.equal(api.getNumThreadReplies(msg1.key), 5)
 
             t.end()
           })
