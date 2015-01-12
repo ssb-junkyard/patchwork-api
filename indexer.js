@@ -1,4 +1,5 @@
 var ssbmsgs = require('ssb-msgs')
+var EventEmitter = require('events').EventEmitter
 
 module.exports = function(state) {
 
@@ -6,6 +7,7 @@ module.exports = function(state) {
   //        that's currently ok because the indexer doesnt have causality deps between types
   //        but be wary of that as the indexer develops!
 
+  var events = new EventEmitter()
   var cbsAwaitingIndex = {} // map of key -> cb
   var indexers = {
     init: function (msg) {
@@ -89,9 +91,11 @@ module.exports = function(state) {
         }
       })
 
-      if (!isreply)
+      if (!isreply) {
         state.posts.unshift(msg.key)
-      
+        events.emit('post', msg)
+      }
+
       if (!state.postsByAuthor[msg.value.author])
         state.postsByAuthor[msg.value.author] = []
       state.postsByAuthor[msg.value.author].unshift(msg.key)
@@ -128,6 +132,8 @@ module.exports = function(state) {
     return str.replace(spacesRgx, '_')
   }
 
+  // exported api
+
   function fn (msg) {
     var indexer = indexers[msg.value.content.type]
     if (indexer) {
@@ -143,7 +149,7 @@ module.exports = function(state) {
       cb()
     }
   }
-
+  fn.events = events
   fn.whenIndexed = function (cb) {
     return function (err, msg) {
       cbsAwaitingIndex[msg.key] = cb.bind(null, err, msg)

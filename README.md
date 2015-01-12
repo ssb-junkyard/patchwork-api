@@ -13,6 +13,8 @@ api.startIndexing(function (err) {
 
   // get functions only work after startIndexing has called its cb
 
+  api.on('post', cb) // emitted on each new toplevel post
+
   api.getMyId() // returns this user's id
   api.getMyProfile() // returns this user's profile
 
