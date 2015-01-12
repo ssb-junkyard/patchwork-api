@@ -19,16 +19,19 @@ api.startIndexing(function (err) {
   api.getMyProfile() // returns this user's profile
 
   api.getMsg(key, cb) // get message data
-  api.getNumReplies(key) // returns # of replies to a message
-  api.getNumThreadReplies(key) // returns # of replies to a message's thread
+  api.getReplyCount(key) // returns # of replies to a message
+  api.getThreadReplyCount(key) // returns # of replies to a message's thread
   api.getReplies(key, cb) // get replies to a message
   api.getPostParent(key, cb) // get parent post to a reply (null if none)
   api.getThread(key, cb) // get full thread (replies, replies to replies, etc)
 
   api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
   api.getPosts({ start:, end: }, cb) // get post messages. start/end are offsets
+  api.getPostCount() // get number of post messages
   api.getInbox({ start:, end: }, cb) // get post messages which reply to or mention the author. start/end are offsets
+  api.getIndexCount() // get number of post messages in the inbox
   api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are offsets
+  api.getAdvertCount() // get number of adverts
   api.getRandomAdverts(num, oldest, cb) // get `num` adverts from the `oldest` most recent messages
 
   api.getProfile(id) // returns profile

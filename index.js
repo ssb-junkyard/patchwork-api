@@ -74,7 +74,7 @@ module.exports = function (ssb) {
       else cb(null, { key: key, value: msg })
     })
   }
-  api.getNumReplies = function(key) {
+  api.getReplyCount = function(key) {
     return (state.threads[key]) ? state.threads[key].replies.length : 0
   }
   api.getReplies = function (key, cb) {
@@ -91,7 +91,7 @@ module.exports = function (ssb) {
     else
       cb(null, null)
   }
-  api.getNumThreadReplies = function(key) {
+  api.getThreadReplyCount = function(key) {
     return (state.threads[key]) ? state.threads[key].numThreadReplies : 0
   }
   api.getThread = function (key, cb) {
@@ -141,11 +141,14 @@ module.exports = function (ssb) {
     )
   }
   api.getPosts = listGetter(state.posts)
+  api.getPostCount = function () { return state.posts.length }
   api.getPostsBy = function (author, opts, cb) {
     listGetter(state.postsByAuthor[author] || [])(opts, cb)
   }
   api.getInbox = listGetter(state.inbox)
+  api.getInboxCount = function () { return state.inbox.length }
   api.getAdverts = listGetter(state.adverts)
+  api.getAdvertCount = function () { return state.adverts.length }
   api.getRandomAdverts = function (num, oldest, cb) {
     var done = multicb({ pluck: 1 })
     for (var i = 0; i < num && i < state.adverts.length; i++) {
