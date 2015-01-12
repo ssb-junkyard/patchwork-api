@@ -2,6 +2,10 @@ var ssbmsgs = require('ssb-msgs')
 
 module.exports = function(state) {
 
+  // :NOTE: messages may arrive to the indexer out of order since theyre fetched in type-divided streams
+  //        that's currently ok because the indexer doesnt have causality deps between types
+  //        but be wary of that as the indexer develops!
+
   var cbsAwaitingIndex = {} // map of key -> cb
   var indexers = {
     init: function (msg) {
@@ -87,6 +91,7 @@ module.exports = function(state) {
 
       if (!isreply)
         state.posts.unshift(msg.key)
+      
       if (!state.postsByAuthor[msg.value.author])
         state.postsByAuthor[msg.value.author] = []
       state.postsByAuthor[msg.value.author].unshift(msg.key)

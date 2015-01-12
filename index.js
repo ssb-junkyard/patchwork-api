@@ -33,14 +33,27 @@ module.exports = function (ssb) {
 
         // index all current msgs
         var ts = Date.now()
-        pull(ssb.createLogStream({ keys: true }), pull.drain(indexer, function (err) {
+        var done = multicb()
+        // :NOTE: this may cause messages to index out of order along the type division
+        //        that's currently ok because the indexer doesnt have causality deps between types
+        //        but be wary of that as the indexer develops!
+        pull(ssb.messagesByType({ type: 'init', keys: true }), pull.drain(indexer, done()))
+        pull(ssb.messagesByType({ type: 'name', keys: true }), pull.drain(indexer, done()))
+        pull(ssb.messagesByType({ type: 'post', keys: true }), pull.drain(indexer, done()))
+        pull(ssb.messagesByType({ type: 'advert', keys: true }), pull.drain(indexer, done()))
+        // pull(ssb.createLogStream({ keys: true }), pull.drain(indexer, function (err) {
+        done(function (err) {
           if (err)
             return cb(err)
 
           // continue indexing in the background
-          pull(ssb.createLogStream({ keys: true, live: true, gt: ts }), pull.drain(indexer))
+          pull(ssb.messagesByType({ type: 'init', keys: true, live: true, gt: ts }), pull.drain(indexer))
+          pull(ssb.messagesByType({ type: 'name', keys: true, live: true, gt: ts }), pull.drain(indexer))
+          pull(ssb.messagesByType({ type: 'post', keys: true, live: true, gt: ts }), pull.drain(indexer))
+          pull(ssb.messagesByType({ type: 'advert', keys: true, live: true, gt: ts }), pull.drain(indexer))
+          // pull(ssb.createLogStream({ keys: true, live: true, gt: ts }), pull.drain(indexer))
           cb()
-        }))
+        })
       })
     },
 
