@@ -18,8 +18,8 @@
   "devDependencies": {
     "osenv": "~0.1.0",
     "rimraf": "~2.2.8",
-    "scuttlebot": "~1.2.1",
-    "secure-scuttlebutt": "~7.1.1",
+    "scuttlebot": "~1.2.2",
+    "secure-scuttlebutt": "~8.0.0",
     "ssb-keys": "~0.4.1",
     "tape": "~3.0.0"
   },
