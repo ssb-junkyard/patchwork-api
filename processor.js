@@ -3,10 +3,6 @@ var EventEmitter = require('events').EventEmitter
 
 module.exports = function(sbot, state) {
 
-  // :NOTE: messages may arrive to the indexer out of order since theyre fetched in type-divided streams
-  //        that's currently ok because the indexer doesnt have causality deps between types
-  //        but be wary of that as the indexer develops!
-
   var events = new EventEmitter()
   var cbsAwaitingProcessing = {} // map of key -> cb
   var processors = {
