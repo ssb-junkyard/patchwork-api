@@ -2,6 +2,7 @@ module.exports = {
   getFeed: 'async',
 
   getPosts: 'async',
+  getPostsBy: 'async',
   getPostCount: 'async',
 
   getInbox: 'async',
