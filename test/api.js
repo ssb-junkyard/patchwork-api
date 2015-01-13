@@ -1,18 +1,19 @@
 var multicb = require('multicb')
 var tape    = require('tape')
 var ssbKeys = require('ssb-keys')
+var schemas = require('ssb-msg-schemas')
 var pull    = require('pull-stream')
 
 tape('feed', function (t) {
   var sbot = require('./util').newserver()
 
   var done = multicb()
-  sbot.phoenix.postText('1', done())
-  sbot.phoenix.postText('2', done())
-  sbot.phoenix.postText('3', done())
-  sbot.phoenix.postText('4', done())
-  sbot.phoenix.postText('5', done())
-  sbot.phoenix.postText('6', done())
+  schemas.addPost(sbot.feed, '1', done())
+  schemas.addPost(sbot.feed, '2', done())
+  schemas.addPost(sbot.feed, '3', done())
+  schemas.addPost(sbot.feed, '4', done())
+  schemas.addPost(sbot.feed, '5', done())
+  schemas.addPost(sbot.feed, '6', done())
   done(function (err) {
     if (err) throw err
 
@@ -41,11 +42,11 @@ tape('posts, replies, and inbox', function (t) {
       numNewPosts++
   }))
 
-  sbot.phoenix.postText('first', function (err, msg1) {
+  schemas.addPost(sbot.feed, 'first', function (err, msg1) {
     if (err) throw err
     t.equal(msg1.value.content.text, 'first')
 
-    sbot.phoenix.postReply('second', msg1.key, function (err, msg2) {
+    schemas.addReplyPost(sbot.feed, 'second', msg1.key, function (err, msg2) {
       if (err) throw err
       t.equal(msg2.value.content.text, 'second')
       t.equal(msg2.value.content.repliesTo.msg, msg1.key)
@@ -76,7 +77,7 @@ tape('posts, replies, and inbox', function (t) {
                   if (err) throw err
                   t.assert(!parent2)
 
-                  sbot.phoenix.postText('hello @'+sbot.feed.id, function (err, msg3) {
+                  schemas.addPost(sbot.feed, 'hello @'+sbot.feed.id, { mentions: sbot.feed.id }, function (err, msg3) {
                     if (err) throw err
 
                     sbot.phoenix.getInbox(function (err, msgs) {
@@ -101,21 +102,21 @@ tape('posts, replies, and inbox', function (t) {
 tape('threads', function (t) {
   var sbot = require('./util').newserver()
 
-  sbot.phoenix.postText('top', function (err, msg1) {
+  schemas.addPost(sbot.feed, 'top', function (err, msg1) {
     if (err) throw err
     t.equal(msg1.value.content.text, 'top')
 
     var done = multicb({ pluck: 1 })
-    sbot.phoenix.postReply('reply 1', msg1.key, done())
-    sbot.phoenix.postReply('reply 2', msg1.key, done())
+    schemas.addReplyPost(sbot.feed, 'reply 1', msg1.key, done())
+    schemas.addReplyPost(sbot.feed, 'reply 2', msg1.key, done())
     done(function (err, replies) {
       if (err) throw err
       t.equal(replies.length, 2)
 
       var done = multicb({ pluck: 1 })
-      sbot.phoenix.postReply('reply 1 reply 1', replies[0].key, done())
-      sbot.phoenix.postReply('reply 1 reply 2', replies[0].key, done())
-      sbot.phoenix.postReply('reply 2 reply 1', replies[1].key, done())
+      schemas.addReplyPost(sbot.feed, 'reply 1 reply 1', replies[0].key, done())
+      schemas.addReplyPost(sbot.feed, 'reply 1 reply 2', replies[0].key, done())
+      schemas.addReplyPost(sbot.feed, 'reply 2 reply 1', replies[1].key, done())
       done(function (err, replies2) {
         if (err) throw err
         t.equal(replies2.length, 3)
@@ -147,8 +148,8 @@ tape('posts by author', function (t) {
   var bob   = sbot.ssb.createFeed(ssbKeys.generate())
 
   var done = multicb()
-  sbot.phoenix.postText('post by me 1', done())
-  sbot.phoenix.postText('post by me 2', done())
+  schemas.addPost(sbot.feed, 'post by me 1', done())
+  schemas.addPost(sbot.feed, 'post by me 2', done())
   alice.add({ type: 'post', text: 'post by alice' }, done())
   bob  .add({ type: 'post', text: 'post by bob' }, done())
   done(function (err) {
@@ -178,12 +179,12 @@ tape('adverts', function (t) {
   var sbot = require('./util').newserver()
 
   var done = multicb()
-  sbot.phoenix.postAdvert('1', done())
-  sbot.phoenix.postAdvert('2', done())
-  sbot.phoenix.postAdvert('3', done())
-  sbot.phoenix.postAdvert('4', done())
-  sbot.phoenix.postAdvert('5', done())
-  sbot.phoenix.postAdvert('6', done())
+  schemas.addAdvert(sbot.feed, '1', done())
+  schemas.addAdvert(sbot.feed, '2', done())
+  schemas.addAdvert(sbot.feed, '3', done())
+  schemas.addAdvert(sbot.feed, '4', done())
+  schemas.addAdvert(sbot.feed, '5', done())
+  schemas.addAdvert(sbot.feed, '6', done())
   done(function (err) {
     if (err) throw err
 
@@ -215,10 +216,10 @@ tape('names', function (t) {
   var bob   = sbot.ssb.createFeed(ssbKeys.generate())
 
   var done = multicb()
-  sbot.phoenix.nameSelf('zed', done())
-  sbot.phoenix.nameOther(bob.id, 'robert', done())
-  alice.add({ type: 'name', name: 'alice' }, done())
-  bob  .add({ type: 'name', name: 'bob' }, done())
+  schemas.addOwnName(sbot.feed, 'zed', done())
+  schemas.addOtherName(sbot.feed, bob.id, 'robert', done())
+  schemas.addOwnName(alice, 'alice', done())
+  schemas.addOwnName(bob, 'bob', done())
   done(function (err) {
     if (err) throw err
     // kludge: wait for the alice.add and bob.add to be indexed

@@ -25,10 +25,6 @@ api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are offse
 api.getAdvertCount(cb) // get number of adverts
 api.getRandomAdverts(num, oldest, cb) // get `num` adverts from the `oldest` most recent messages
 
-api.postText(text, cb) // publish post
-api.postReply(text, parentKey, cb) // publish reply
-api.postAdvert(text, cb) // publish advert
-
 api.getMsg(key, cb) // get message data
 api.getReplies(key, cb) // get replies to a message
 api.getPostParent(key, cb) // get parent post to a reply (null if none)
@@ -44,6 +40,4 @@ api.getAllProfiles(cb) // gets all profiles in id->profile map
 api.getNamesById(cb) // gets map of id->names
 api.getName(id, cb) // gets name for the given id
 api.getIdsByName(cb) // gets map of names->id
-api.nameSelf(name, cb) // publish new name for self
-api.nameOther(target, name, cb) // publish new name for target
 ```

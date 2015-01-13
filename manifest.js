@@ -14,10 +14,6 @@ module.exports = {
   getAdvertCount: 'async',
   getRandomAdverts: 'async',
 
-  postText: 'async',
-  postReply: 'async',
-  postAdvert: 'async',
-
   getMsg: 'async',
   getReplies: 'async',
   getPostParent: 'async',
@@ -31,7 +27,5 @@ module.exports = {
 
   getNamesById: 'async',
   getName: 'async',
-  getIdsByName: 'async',
-  nameSelf: 'async',
-  nameOther: 'async'
+  getIdsByName: 'async'
 }

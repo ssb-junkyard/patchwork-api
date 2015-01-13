@@ -160,32 +160,6 @@ exports.init = function (sbot) {
     cb(null, state.ids)
   }
 
-  // publishers
-
-  api.postText = function (text, cb) {
-    if (!text.trim()) return cb(new Error('Can not post an empty string to the feed'))
-    sbot.feed.add(extractMentions({type: 'post', text: text}), processor.whenIndexed(cb))
-  }
-  api.postReply = function (text, parent, cb) {
-    if (!text.trim()) return cb(new Error('Can not post an empty string to the feed'))
-    if (!parent) return cb(new Error('Must provide a parent message to the reply'))
-    sbot.feed.add(extractMentions({type: 'post', text: text, repliesTo: {msg: parent, rel: 'replies-to'}}), processor.whenIndexed(cb))
-  }
-  api.postAdvert = function (text, cb) {
-    if (!text.trim()) return cb(new Error('Can not post an empty string to the adverts'))
-    sbot.feed.add({type: 'advert', text: text}, processor.whenIndexed(cb))
-  }
-
-  api.nameSelf = function (name, cb) {
-    if (typeof name != 'string' || name.trim() == '') return cb(new Error('param 1 `name` string is required and must be non-empty'))
-    sbot.feed.add({type: 'name', name: name}, processor.whenIndexed(cb))
-  }
-  api.nameOther = function (target, name, cb) {
-    if (!target || typeof target != 'string') return cb(new Error('param 1 `target` feed string is required'))
-    if (typeof name != 'string' || name.trim() == '') return cb(new Error('param 2 `name` string is required and must be non-empty'))
-    sbot.feed.add({type: 'name', rel: 'names', feed: target, name: name}, processor.whenIndexed(cb))
-  }
-
   // helper to get an option off an opt function (avoids the `opt || {}` pattern)
   function o (opts, k, def) {
     return opts && opts[k] !== void 0 ? opts[k] : def
@@ -207,17 +181,6 @@ exports.init = function (sbot) {
         .forEach(function (key) { api.getMsg(key, done()) })
       done(cb)
     }
-  }
-
-  // helper to find mentions in .text in put them in link objects
-  function extractMentions (content) {
-    var match
-    var mentionRegex = /(\s|^)@([A-z0-9\/=\.\+]+)/g;
-    while ((match = mentionRegex.exec(content.text))) {
-      content.mentions = content.mentions || []
-      content.mentions.push({ feed: match[2], rel: 'mentions' })
-    }
-    return content
   }
 
   // helper to convert gt,gte,lt,lte params from messages into proper keys for the feeddb index
