@@ -20,9 +20,9 @@ module.exports = function (ssb) {
     adverts: []
   }
 
-  var indexer = require('./indexer')(state)
+  var processor = require('./processor')(state)
   var api = new EventEmitter()
-  indexer.events.on('post', api.emit.bind(api, 'post'))
+  processor.events.on('post', api.emit.bind(api, 'post'))
 
   // setup funcs
 
@@ -37,23 +37,23 @@ module.exports = function (ssb) {
       var ts = Date.now()
       var done = multicb()
       // :NOTE: this may cause messages to index out of order along the type division
-      //        that's currently ok because the indexer doesnt have causality deps between types
-      //        but be wary of that as the indexer develops!
-      pull(ssb.messagesByType({ type: 'init', keys: true }), pull.drain(indexer, done()))
-      pull(ssb.messagesByType({ type: 'name', keys: true }), pull.drain(indexer, done()))
-      pull(ssb.messagesByType({ type: 'post', keys: true }), pull.drain(indexer, done()))
-      pull(ssb.messagesByType({ type: 'advert', keys: true }), pull.drain(indexer, done()))
-      // pull(ssb.createLogStream({ keys: true }), pull.drain(indexer, function (err) {
+      //        that's currently ok because the processor doesnt have causality deps between types
+      //        but be wary of that as the processor develops!
+      pull(ssb.messagesByType({ type: 'init', keys: true }), pull.drain(processor, done()))
+      pull(ssb.messagesByType({ type: 'name', keys: true }), pull.drain(processor, done()))
+      pull(ssb.messagesByType({ type: 'post', keys: true }), pull.drain(processor, done()))
+      pull(ssb.messagesByType({ type: 'advert', keys: true }), pull.drain(processor, done()))
+      // pull(ssb.createLogStream({ keys: true }), pull.drain(processor, function (err) {
       done(function (err) {
         if (err)
           return cb(err)
 
         // continue indexing in the background
-        pull(ssb.messagesByType({ type: 'init', keys: true, live: true, gt: ts }), pull.drain(indexer))
-        pull(ssb.messagesByType({ type: 'name', keys: true, live: true, gt: ts }), pull.drain(indexer))
-        pull(ssb.messagesByType({ type: 'post', keys: true, live: true, gt: ts }), pull.drain(indexer))
-        pull(ssb.messagesByType({ type: 'advert', keys: true, live: true, gt: ts }), pull.drain(indexer))
-        // pull(ssb.createLogStream({ keys: true, live: true, gt: ts }), pull.drain(indexer))
+        pull(ssb.messagesByType({ type: 'init', keys: true, live: true, gt: ts }), pull.drain(processor))
+        pull(ssb.messagesByType({ type: 'name', keys: true, live: true, gt: ts }), pull.drain(processor))
+        pull(ssb.messagesByType({ type: 'post', keys: true, live: true, gt: ts }), pull.drain(processor))
+        pull(ssb.messagesByType({ type: 'advert', keys: true, live: true, gt: ts }), pull.drain(processor))
+        // pull(ssb.createLogStream({ keys: true, live: true, gt: ts }), pull.drain(processor))
         cb()
       })
     })
@@ -184,26 +184,26 @@ module.exports = function (ssb) {
 
   api.postText = function (text, cb) {
     if (!text.trim()) return cb(new Error('Can not post an empty string to the feed'))
-    ssb.add(extractMentions({type: 'post', text: text}), indexer.whenIndexed(cb))
+    ssb.add(extractMentions({type: 'post', text: text}), processor.whenIndexed(cb))
   }
   api.postReply = function (text, parent, cb) {
     if (!text.trim()) return cb(new Error('Can not post an empty string to the feed'))
     if (!parent) return cb(new Error('Must provide a parent message to the reply'))
-    ssb.add(extractMentions({type: 'post', text: text, repliesTo: {msg: parent, rel: 'replies-to'}}), indexer.whenIndexed(cb))
+    ssb.add(extractMentions({type: 'post', text: text, repliesTo: {msg: parent, rel: 'replies-to'}}), processor.whenIndexed(cb))
   }
   api.postAdvert = function (text, cb) {
     if (!text.trim()) return cb(new Error('Can not post an empty string to the adverts'))
-    ssb.add({type: 'advert', text: text}, indexer.whenIndexed(cb))
+    ssb.add({type: 'advert', text: text}, processor.whenIndexed(cb))
   }
 
   api.nameSelf = function (name, cb) {
     if (typeof name != 'string' || name.trim() == '') return cb(new Error('param 1 `name` string is required and must be non-empty'))
-    ssb.add({type: 'name', name: name}, indexer.whenIndexed(cb))
+    ssb.add({type: 'name', name: name}, processor.whenIndexed(cb))
   }
   api.nameOther = function (target, name, cb) {
     if (!target || typeof target != 'string') return cb(new Error('param 1 `target` feed string is required'))
     if (typeof name != 'string' || name.trim() == '') return cb(new Error('param 2 `name` string is required and must be non-empty'))
-    ssb.add({type: 'name', rel: 'names', feed: target, name: name}, indexer.whenIndexed(cb))
+    ssb.add({type: 'name', rel: 'names', feed: target, name: name}, processor.whenIndexed(cb))
   }
   
   api.addEdge = function (type, target, cb) {

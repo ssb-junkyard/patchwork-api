@@ -8,8 +8,8 @@ module.exports = function(state) {
   //        but be wary of that as the indexer develops!
 
   var events = new EventEmitter()
-  var cbsAwaitingIndex = {} // map of key -> cb
-  var indexers = {
+  var cbsAwaitingProcessing = {} // map of key -> cb
+  var processors = {
     init: function (msg) {
       var profile = getProfile(msg.value.author)
       profile.createdAt = msg.value.timestamp      
@@ -135,24 +135,25 @@ module.exports = function(state) {
   // exported api
 
   function fn (msg) {
-    var indexer = indexers[msg.value.content.type]
-    if (indexer) {
-      try { indexer(msg) }
+    var process = processors[msg.value.content.type]
+    if (process) {
+      try { process(msg) }
       catch (e) {
-        console.warn('Failed to index message', e, msg)
+        // :TODO: use sbot logging plugin
+        console.warn('Failed to process message', e, msg)
       }
     }
 
-    var cb = cbsAwaitingIndex[msg.key]
+    var cb = cbsAwaitingProcessing[msg.key]
     if (cb) {
-      delete cbsAwaitingIndex[msg.key]
+      delete cbsAwaitingProcessing[msg.key]
       cb()
     }
   }
   fn.events = events
   fn.whenIndexed = function (cb) {
     return function (err, msg) {
-      cbsAwaitingIndex[msg.key] = cb.bind(null, err, msg)
+      cbsAwaitingProcessing[msg.key] = cb.bind(null, err, msg)
     }
   }
 
