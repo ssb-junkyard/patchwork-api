@@ -9,7 +9,7 @@ module.exports = {
 
   getAdverts: 'async',
   getAdvertCount: 'async',
-  getRandomAdverts: 'async'
+  getRandomAdverts: 'async',
 
   postText: 'async',
   postReply: 'async',
@@ -26,7 +26,7 @@ module.exports = {
   getProfile: 'async',
   getAllProfiles: 'async',
 
-  getNamesById: 'async'
+  getNamesById: 'async',
   getName: 'async',
   getIdsByName: 'async',
   nameSelf: 'async',

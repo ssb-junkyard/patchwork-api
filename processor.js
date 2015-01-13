@@ -1,7 +1,7 @@
 var ssbmsgs = require('ssb-msgs')
 var EventEmitter = require('events').EventEmitter
 
-module.exports = function(state) {
+module.exports = function(sbot, state) {
 
   // :NOTE: messages may arrive to the indexer out of order since theyre fetched in type-divided streams
   //        that's currently ok because the indexer doesnt have causality deps between types
@@ -33,7 +33,7 @@ module.exports = function(state) {
           profile.given[author] = profile.given[author] || {}
           profile.given[author].name = name
 
-          if (author === state.myid) {
+          if (author === sbot.feed.id) {
             // author is me, use name
             state.names[link.feed]  = name
             state.ids[name] = link.feed
@@ -44,12 +44,12 @@ module.exports = function(state) {
         var profile = getProfile(author)
         profile.self.name = name
 
-        if (author === state.myid) {
+        if (author === sbot.feed.id) {
           // author is me, use name
           state.names[author] = name
           state.ids[name] = author
         }
-        else if (!state.names[author] || !profile.given[state.myid] || !profile.given[state.myid].name) {
+        else if (!state.names[author] || !profile.given[sbot.feed.id] || !profile.given[sbot.feed.id].name) {
           // no name assigned by me, use their claimed name
           state.names[author] = '"' + name + '"'
           state.ids['"' + name + '"'] = author
@@ -85,7 +85,7 @@ module.exports = function(state) {
             isinboxed = true
           }
         }
-        else if (link.rel == 'mentions' && link.feed === state.myid && !isinboxed) {
+        else if (link.rel == 'mentions' && link.feed === sbot.feed.id && !isinboxed) {
           state.inbox.unshift(msg.key)
           isinboxed = true
         }

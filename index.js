@@ -8,6 +8,7 @@ exports.permissions = require('./permissions')
 
 exports.init = function (sbot) {
 
+  var api = {}
   var state = {
     // indexes
     posts: [],
@@ -24,7 +25,7 @@ exports.init = function (sbot) {
   }
   state.postsByAuthor[sbot.feed.id] = state.myposts // alias myposts inside postsByAuthor
 
-  var processor = require('./processor')(state)
+  var processor = require('./processor')(sbot, state)
   pull(sbot.ssb.createLogStream({ live: true }), pull.drain(processor))
 
   // :TODO: replace the on('post') situation
