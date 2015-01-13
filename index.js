@@ -1,7 +1,7 @@
-var pull         = require('pull-stream')
-var ssbmsgs      = require('ssb-msgs')
-var multicb      = require('multicb')
-var EventEmitter = require('events').EventEmitter
+var pull     = require('pull-stream')
+var ssbmsgs  = require('ssb-msgs')
+var multicb  = require('multicb')
+var pushable = require('pull-pushable')
 
 exports.manifest    = require('./manifest')
 exports.permissions = require('./permissions')
@@ -30,9 +30,17 @@ exports.init = function (sbot) {
 
   // :TODO: replace the on('post') situation
   // var api = new EventEmitter()
-  // processor.events.on('post', api.emit.bind(api, 'post'))
+  // events stream
+  var eventsStream = pushable()
+  processor.events.on('post', function (post) {
+    eventsStream.push({ type: 'post', post: post })
+  })
 
   // getters
+
+  api.events = function () {
+    return eventsStream
+  }
 
   api.getMyProfile = function (cb) {
     return api.getProfile(sbot.feed.id, cb)

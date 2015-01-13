@@ -1,4 +1,6 @@
 module.exports = {
+  events: 'source',
+
   getFeed: 'async',
 
   getPosts: 'async',

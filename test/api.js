@@ -1,6 +1,7 @@
 var multicb = require('multicb')
 var tape    = require('tape')
 var ssbKeys = require('ssb-keys')
+var pull    = require('pull-stream')
 
 tape('feed', function (t) {
   var sbot = require('./util').newserver()
@@ -33,6 +34,12 @@ tape('feed', function (t) {
 
 tape('posts, replies, and inbox', function (t) {
   var sbot = require('./util').newserver()
+
+  var numNewPosts = 0
+  pull(sbot.phoenix.events(), pull.drain(function (e) {
+    if (e.type == 'post')
+      numNewPosts++
+  }))
 
   sbot.phoenix.postText('first', function (err, msg1) {
     if (err) throw err
@@ -77,6 +84,7 @@ tape('posts, replies, and inbox', function (t) {
                       t.equal(msgs.length, 2)
                       t.equal(msgs[0].value.content.text, 'hello @'+sbot.feed.id)
                       t.equal(msgs[1].value.content.text, 'second')
+                      t.equal(numNewPosts, 2)
                       t.end()
                     })
                   })
