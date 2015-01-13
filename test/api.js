@@ -43,9 +43,9 @@ tape('posts, replies, and inbox', function (t) {
       t.equal(msg2.value.content.text, 'second')
       t.equal(msg2.value.content.repliesTo.msg, msg1.key)
 
-      sbot.phoenix.getThreadMeta(msg1.key, function (err, tmeta) {
+      sbot.phoenix.getMsg(msg1.key, function (err, msg1full) {
         if (err) throw err
-        t.equal(tmeta.replies.length, 1)
+        t.equal(msg1full.replies.length, 1)
 
         sbot.phoenix.getPosts(function (err, msgs) {
           if (err) throw err
@@ -116,6 +116,7 @@ tape('threads', function (t) {
           if (err) throw err
           t.equal(thread.value.content.text, 'top')
           t.equal(thread.replies.length, 2)
+          t.equal(thread.numThreadReplies, 5)
           t.equal(thread.replies[0].value.content.text, 'reply 2')
           t.equal(thread.replies[1].value.content.text, 'reply 1')
           t.equal(thread.replies[0].replies.length, 1)
@@ -124,11 +125,7 @@ tape('threads', function (t) {
           t.equal(thread.replies[1].replies[0].value.content.text, 'reply 1 reply 2')
           t.equal(thread.replies[1].replies[1].value.content.text, 'reply 1 reply 1')
 
-          sbot.phoenix.getThreadMeta(msg1.key, function (err, tmeta) {
-            if (err) throw err
-            t.equal(tmeta.numThreadReplies, 5)
-            t.end()
-          })
+          t.end()
         })
       })
     })

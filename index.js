@@ -48,7 +48,14 @@ exports.init = function (sbot) {
   api.getMsg = function (key, cb) {
     sbot.ssb.get(key, function (err, msg) {
       if (err) cb(err)
-      else cb(null, { key: key, value: msg })
+      else {
+        var obj = { key: key, value: msg }
+        if (state.threads[key]) {
+          for (var k in state.threads[key])
+            obj[k] = state.threads[key][k]
+        }
+        cb(null, obj)
+      }
     })
   }
   api.getReplies = function (key, cb) {
@@ -67,7 +74,7 @@ exports.init = function (sbot) {
   }
   api.getThread = function (key, cb) {
     var done = multicb()
-    var thread = { key: key, value: null, replies: null }
+    var thread = { key: key, value: null, replies: null, numThreadReplies: 0, parent: null }
     get(thread, done())
 
     function get(t, cb) {
@@ -82,8 +89,10 @@ exports.init = function (sbot) {
     function replies(t) {
       if (!state.threads[t.key])
         return
+      t.parent = state.threads[t.key].parent
+      t.numThreadReplies = state.threads[t.key].numThreadReplies
       t.replies = state.threads[t.key].replies.map(function (rkey) {
-        var rt = { key: rkey, value: null, replies: null }
+        var rt = { key: rkey, value: null, replies: null, numThreadReplies: 0, parent: null }
         get(rt, done())
         return rt
       })
