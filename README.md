@@ -10,8 +10,8 @@ phoenixAPI.permissions // rpc permissions
 
 var api = phoenixAPI.init(sbot) // create plugin api instance
 
-// api.on('post', cb) // emitted on each new toplevel post
-// :TODO: replace this, maybe with a source stream
+pull(api.events(), pull.drain(function (event))) // event emitting stream
+// emits { type: 'post', post: Object } for each new toplevel post
 
 api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
 

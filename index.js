@@ -28,8 +28,6 @@ exports.init = function (sbot) {
   var processor = require('./processor')(sbot, state)
   pull(sbot.ssb.createLogStream({ live: true }), pull.drain(processor))
 
-  // :TODO: replace the on('post') situation
-  // var api = new EventEmitter()
   // events stream
   var eventsStream = pushable()
   processor.events.on('post', function (post) {
