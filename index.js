@@ -35,7 +35,7 @@ exports.init = function (sbot) {
   // getters
 
   api.getMyProfile = function (cb) {
-    return this.getProfile(state.myid, cb)
+    return api.getProfile(sbot.feed.id, cb)
   }
 
   api.getThreadMeta = function (key, cb) {
