@@ -20,7 +20,7 @@
   "devDependencies": {
     "osenv": "~0.1.0",
     "rimraf": "~2.2.8",
-    "scuttlebot": "~1.2.2",
+    "scuttlebot": "~2.0.0",
     "secure-scuttlebutt": "~8.0.0",
     "ssb-keys": "~0.4.1",
     "ssb-msg-schemas": "~1.0.0",
