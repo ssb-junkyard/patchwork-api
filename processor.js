@@ -4,7 +4,6 @@ var EventEmitter = require('events').EventEmitter
 module.exports = function(sbot, state) {
 
   var events = new EventEmitter()
-  var cbsAwaitingProcessing = {} // map of key -> cb
   var processors = {
     init: function (msg) {
       var profile = getProfile(msg.value.author)
@@ -139,19 +138,8 @@ module.exports = function(sbot, state) {
         console.warn('Failed to process message', e, msg)
       }
     }
-
-    var cb = cbsAwaitingProcessing[msg.key]
-    if (cb) {
-      delete cbsAwaitingProcessing[msg.key]
-      cb()
-    }
   }
   fn.events = events
-  fn.whenIndexed = function (cb) {
-    return function (err, msg) {
-      cbsAwaitingProcessing[msg.key] = cb.bind(null, err, msg)
-    }
-  }
 
   return fn
 }

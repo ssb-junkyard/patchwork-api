@@ -11,6 +11,7 @@
     "url": "git://github.com/ssbc/phoenix-api.git"
   },
   "dependencies": {
+    "level-memview": "~0.0.0",
     "multicb": "~1.1.0",
     "pull-stream": "~2.24.1",
     "pull-pushable": "~1.1.3",
