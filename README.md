@@ -1,57 +1,43 @@
 # Phoenix API
 
-methods for reading and writing to the log from the phoenix gui
+scuttlebot rpc methods for accessing the log from the phoenix gui
 
 ```js
-var api = require('phoenix-api')(ssbRpcApi)
+var phoenixAPI = require('phoenix-api')
 
-// initiate the indexing process
-// - call this any time the connection is created (eg on init, after disconnects)
-api.startIndexing(function (err) {
-  if (err)
-    throw err
+phoenixAPI.manifest    // rpc manifest
+phoenixAPI.permissions // rpc permissions
 
-  // get functions only work after startIndexing has called its cb
+var api = phoenixAPI.init(sbot) // create plugin api instance
 
-  api.on('post', cb) // emitted on each new toplevel post
+pull(api.events(), pull.drain(function (event))) // event emitting stream
+// emits { type: 'post', post: Object } for each new toplevel post
 
-  api.getMyId() // returns this user's id
-  api.getMyProfile() // returns this user's profile
+api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
 
-  api.getMsg(key, cb) // get message data
-  api.getReplyCount(key) // returns # of replies to a message
-  api.getThreadReplyCount(key) // returns # of replies to a message's thread
-  api.getReplies(key, cb) // get replies to a message
-  api.getPostParent(key, cb) // get parent post to a reply (null if none)
-  api.getThread(key, cb) // get full thread (replies, replies to replies, etc)
+api.getPosts({ start:, end: }, cb) // get post messages. start/end are offsets
+api.getPostCount(cb) // get number of post messages
 
-  api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
-  api.getPosts({ start:, end: }, cb) // get post messages. start/end are offsets
-  api.getPostCount() // get number of post messages
-  api.getInbox({ start:, end: }, cb) // get post messages which reply to or mention the author. start/end are offsets
-  api.getInboxCount() // get number of post messages in the inbox
-  api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are offsets
-  api.getAdvertCount() // get number of adverts
-  api.getRandomAdverts(num, oldest, cb) // get `num` adverts from the `oldest` most recent messages
+api.getInbox({ start:, end: }, cb) // get post messages which reply to or mention the author. start/end are offsets
+api.getInboxCount(cb) // get number of post messages in the inbox
 
-  api.getProfile(id) // returns profile
-  api.getAllProfiles() // returns all profiles in id->profile map
-  api.getGraph(type, cb) // get friends graph (type may be 'follow', 'trust', or 'edge')
-  api.getNames() // returns map of id->names
-  api.getName(id) // returns user's name
-  api.getNameById(id) // returns user's name
-  api.getIdByName(name) // returns user's id
+api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are offsets
+api.getAdvertCount(cb) // get number of adverts
+api.getRandomAdverts(num, oldest, cb) // get `num` adverts from the `oldest` most recent messages
 
-  api.postText(text, cb) // publish post
-  api.postReply(text, parentKey, cb) // publish reply
-  api.postAdvert(text, cb) // publish advert
+api.getMsg(key, cb) // get message data
+api.getReplies(key, cb) // get replies to a message
+api.getPostParent(key, cb) // get parent post to a reply (null if none)
+api.getThread(key, cb) // get full thread (replies, replies to replies, etc)
+api.getThreadMeta(key, cb) // gets metadata for the thread at the given key
+api.getAllThreadMetas(cb) // gets metadata for all threads in a key->meta map
+// metadata object: { parent:, replies: [keys], numThreadReplies: }
 
-  api.nameSelf(name, cb) // publish new name for self
-  api.nameOther(target, name, cb) // publish new name for target
+api.getMyProfile(cb) // gets this user's profile
+api.getProfile(id, cb) // gets profile
+api.getAllProfiles(cb) // gets all profiles in id->profile map
 
-  api.addEdge(type, target, cb) // publish new edge from self to target (type may be 'follow', 'trust', or 'edge')
-  api.delEdge(type, target, cb) // publish deleted edge from self to target (type may be 'follow', 'trust', or 'edge')
-
-  api.useInvite(invite, cb)
-})
+api.getNamesById(cb) // gets map of id->names
+api.getName(id, cb) // gets name for the given id
+api.getIdsByName(cb) // gets map of names->id
 ```

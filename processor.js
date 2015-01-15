@@ -1,15 +1,10 @@
 var ssbmsgs = require('ssb-msgs')
 var EventEmitter = require('events').EventEmitter
 
-module.exports = function(state) {
-
-  // :NOTE: messages may arrive to the indexer out of order since theyre fetched in type-divided streams
-  //        that's currently ok because the indexer doesnt have causality deps between types
-  //        but be wary of that as the indexer develops!
+module.exports = function(sbot, state) {
 
   var events = new EventEmitter()
-  var cbsAwaitingIndex = {} // map of key -> cb
-  var indexers = {
+  var processors = {
     init: function (msg) {
       var profile = getProfile(msg.value.author)
       profile.createdAt = msg.value.timestamp      
@@ -33,7 +28,7 @@ module.exports = function(state) {
           profile.given[author] = profile.given[author] || {}
           profile.given[author].name = name
 
-          if (author === state.myid) {
+          if (author === sbot.feed.id) {
             // author is me, use name
             state.names[link.feed]  = name
             state.ids[name] = link.feed
@@ -44,12 +39,12 @@ module.exports = function(state) {
         var profile = getProfile(author)
         profile.self.name = name
 
-        if (author === state.myid) {
+        if (author === sbot.feed.id) {
           // author is me, use name
           state.names[author] = name
           state.ids[name] = author
         }
-        else if (!state.names[author] || !profile.given[state.myid] || !profile.given[state.myid].name) {
+        else if (!state.names[author] || !profile.given[sbot.feed.id] || !profile.given[sbot.feed.id].name) {
           // no name assigned by me, use their claimed name
           state.names[author] = '"' + name + '"'
           state.ids['"' + name + '"'] = author
@@ -85,7 +80,7 @@ module.exports = function(state) {
             isinboxed = true
           }
         }
-        else if (link.rel == 'mentions' && link.feed === state.myid && !isinboxed) {
+        else if (link.rel == 'mentions' && link.feed === sbot.feed.id && !isinboxed) {
           state.inbox.unshift(msg.key)
           isinboxed = true
         }
@@ -135,26 +130,16 @@ module.exports = function(state) {
   // exported api
 
   function fn (msg) {
-    var indexer = indexers[msg.value.content.type]
-    if (indexer) {
-      try { indexer(msg) }
+    var process = processors[msg.value.content.type]
+    if (process) {
+      try { process(msg) }
       catch (e) {
-        console.warn('Failed to index message', e, msg)
+        // :TODO: use sbot logging plugin
+        console.warn('Failed to process message', e, msg)
       }
-    }
-
-    var cb = cbsAwaitingIndex[msg.key]
-    if (cb) {
-      delete cbsAwaitingIndex[msg.key]
-      cb()
     }
   }
   fn.events = events
-  fn.whenIndexed = function (cb) {
-    return function (err, msg) {
-      cbsAwaitingIndex[msg.key] = cb.bind(null, err, msg)
-    }
-  }
 
   return fn
 }
