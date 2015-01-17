@@ -29,10 +29,15 @@ exports.init = function (sbot) {
   var processor = require('./processor')(sbot, state)
   var awaitSync = memview(sbot.ssb, processor, function () { return null })
 
+  // track sync state
+  var isSynced = false
+  awaitSync(function () { isSynced = true })
+
   // events stream
   var eventsStream = pushable()
   processor.events.on('post', function (post) {
-    eventsStream.push({ type: 'post', post: post })
+    if (isSynced)
+      eventsStream.push({ type: 'post', post: post })
   })
 
   // getters
