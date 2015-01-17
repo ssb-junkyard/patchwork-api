@@ -65,7 +65,7 @@ module.exports = function(sbot, state) {
           // index thread
           if (!state.threads[link.msg])
             state.threads[link.msg] = { parent: null, replies: [], numThreadReplies: 0 }
-          state.threads[link.msg].replies.unshift(msg.key)
+          sortedInsert(state.threads[link.msg].replies, msg.value.timestamp, msg.key)
           state.threads[msg.key] = { parent: link.msg, replies: [], numThreadReplies: 0 }
 
           var t = state.threads[link.msg]
@@ -75,25 +75,25 @@ module.exports = function(sbot, state) {
           } while (t)
 
           // add to inbox if it's a reply to this user's message
-          if (state.myposts.indexOf(link.msg) !== -1 && !isinboxed) {
-            state.inbox.unshift(msg.key)
+          if (!isinboxed && contains(state.myposts, link.msg)) {
+            sortedInsert(state.inbox, msg.value.timestamp, msg.key)
             isinboxed = true
           }
         }
         else if (link.rel == 'mentions' && link.feed === sbot.feed.id && !isinboxed) {
-          state.inbox.unshift(msg.key)
+          sortedInsert(state.inbox, msg.value.timestamp, msg.key)
           isinboxed = true
         }
       })
 
       if (!isreply) {
-        state.posts.unshift(msg.key)
+        sortedInsert(state.posts, msg.value.timestamp, msg.key)
         events.emit('post', msg)
       }
 
       if (!state.postsByAuthor[msg.value.author])
         state.postsByAuthor[msg.value.author] = []
-      state.postsByAuthor[msg.value.author].unshift(msg.key)
+      sortedInsert(state.postsByAuthor[msg.value.author], msg.value.timestamp, msg.key)
     },
 
     advert: function(msg) {
@@ -101,7 +101,7 @@ module.exports = function(sbot, state) {
       if (empty(content.text))
         return
 
-      state.adverts.unshift(msg.key)
+      sortedInsert(state.adverts, msg.value.timestamp, msg.key)
     }
   }
 
@@ -125,6 +125,23 @@ module.exports = function(sbot, state) {
   var spacesRgx = /\s/g
   function noSpaces (str) {
     return str.replace(spacesRgx, '_')
+  }
+
+  function sortedInsert(index, ts, key) {
+    for (var i=0; i < index.length; i++) {
+      if (index[i].ts < ts) {
+        index.splice(i, 0, { ts: ts, key: key })
+        return
+      }
+    }
+    index.push({ ts: ts, key: key })
+  }
+
+  function contains(index, key) {
+    for (var i=0; i < index.length; i++) {
+      if (index[i].key === key)
+        return true
+    }    
   }
 
   // exported api

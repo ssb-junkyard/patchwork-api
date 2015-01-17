@@ -22,7 +22,7 @@ exports.init = function (sbot) {
     profiles: {},
     names: {}, // ids -> names
     ids: {}, // names -> ids
-    threads: {} // maps: post key -> { replies: [keys], parent:, numThreadReplies: }
+    threads: {} // maps: post key -> { replies: [{ts:,key:}], parent:, numThreadReplies: }
   }
   state.postsByAuthor[sbot.feed.id] = state.myposts // alias myposts inside postsByAuthor
 
@@ -77,7 +77,7 @@ exports.init = function (sbot) {
     awaitSync(function () {
       if (key in state.threads && state.threads[key].replies.length) {
         var done = multicb({ pluck: 1 })
-        state.threads[key].replies.forEach(function (rkey) { api.getMsg(rkey, done()) })
+        state.threads[key].replies.forEach(function (reply) { api.getMsg(reply.key, done()) })
         return done(cb)
       }
       cb(null, [])
@@ -111,8 +111,8 @@ exports.init = function (sbot) {
           return
         t.parent = state.threads[t.key].parent
         t.numThreadReplies = state.threads[t.key].numThreadReplies
-        t.replies = state.threads[t.key].replies.map(function (rkey) {
-          var rt = { key: rkey, value: null, replies: null, numThreadReplies: 0, parent: null }
+        t.replies = state.threads[t.key].replies.map(function (reply) {
+          var rt = { key: reply.key, value: null, replies: null, numThreadReplies: 0, parent: null }
           get(rt, done())
           return rt
         })
@@ -163,7 +163,7 @@ exports.init = function (sbot) {
       var done = multicb({ pluck: 1 })
       for (var i = 0; i < num && i < state.adverts.length; i++) {
         var index = (Math.random()*Math.min(state.adverts.length, oldest))|0
-        api.getMsg(state.adverts[index], done())
+        api.getMsg(state.adverts[index].key, done())
       }
       done(cb)
     })
@@ -204,7 +204,7 @@ exports.init = function (sbot) {
         var done = multicb({ pluck: 1 })
         index
           .slice(start, end)
-          .forEach(function (key) { api.getMsg(key, done()) })
+          .forEach(function (v) { api.getMsg(v.key, done()) })
         done(cb)
       })
     }
