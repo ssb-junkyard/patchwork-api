@@ -63,8 +63,14 @@ module.exports = function(sbot, state) {
           isreply = true
 
           // index thread
-          if (!state.threads[link.msg])
+          if (!state.threads[link.msg]) {
             state.threads[link.msg] = { parent: null, replies: [], numThreadReplies: 0 }
+            if (!contains(state.posts, link.msg)) {
+              // index the parent as a post (it's a nonpost that now has replies, so is going to be treated as a post)
+              // - use the reply's timestamp to insert. this saves us from looking up the message, and makes some sense
+              sortedInsert(state.posts, msg.value.timestamp, link.msg)
+            }
+          }
           sortedInsert(state.threads[link.msg].replies, msg.value.timestamp, msg.key)
           state.threads[msg.key] = { parent: link.msg, replies: [], numThreadReplies: 0 }
 
