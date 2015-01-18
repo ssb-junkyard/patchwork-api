@@ -26,6 +26,7 @@ module.exports = {
   getAllProfiles: 'async',
 
   getNamesById: 'async',
+  getNameTrustRanks: 'async',
   getName: 'async',
   getIdsByName: 'async'
 }

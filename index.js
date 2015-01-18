@@ -150,7 +150,7 @@ exports.init = function (sbot) {
   }
   api.getPosts = listGetter(state.posts)
   api.getPostCount = function (cb) { 
-    awaitSync(function() { cb(null, state.posts.length) })
+    awaitSync(function () { cb(null, state.posts.length) })
   }
   api.getPostsBy = function (author, opts, cb) {
     listGetter(state.postsByAuthor[author] || [])(opts, cb)
@@ -175,19 +175,28 @@ exports.init = function (sbot) {
   }
 
   api.getProfile = function (id, cb) {
-    awaitSync(function() { cb(null, state.profiles[id]) })
+    awaitSync(function () { cb(null, state.profiles[id]) })
   }
   api.getAllProfiles = function (cb) {
-    awaitSync(function() { cb(null, state.profiles) })
+    awaitSync(function () { cb(null, state.profiles) })
   }
   api.getNamesById = function (cb) {
-    awaitSync(function() { cb(null, state.names) })
+    awaitSync(function () { cb(null, state.names) })
+  }
+  api.getNameTrustRanks = function (cb) {
+    awaitSync(function () {
+      var ranks = {}
+      for (var id in state.names)
+        ranks[id] = (state.profiles[id].given[sbot.feed.id] && state.profiles[id].given[sbot.feed.id].name) ? 1 : 0
+      ranks[sbot.feed.id] = 1
+      cb(null, ranks)
+    })
   }
   api.getName = function (id, cb) {
-    awaitSync(function() { cb(null, state.names[id]) })
+    awaitSync(function () { cb(null, state.names[id]) })
   }
   api.getIdsByName = function (cb) {
-    awaitSync(function() { cb(null, state.ids) })
+    awaitSync(function () { cb(null, state.ids) })
   }
 
   // helper to get an option off an opt function (avoids the `opt || {}` pattern)
@@ -198,7 +207,7 @@ exports.init = function (sbot) {
   // helper to get messages from an index
   function listGetter (index) {
     return function (opts, cb) {
-      awaitSync(function() {
+      awaitSync(function () {
         if (typeof opts == 'function') {
           cb = opts
           opts = null
