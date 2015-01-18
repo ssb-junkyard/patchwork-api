@@ -20,7 +20,9 @@ exports.init = function (sbot) {
 
     // views
     profiles: {},
+    trustedProfiles: {},
     names: {}, // ids -> names
+    nameTrustRanks: {}, // ids -> trust-ranks
     ids: {}, // names -> ids
     threads: {} // maps: post key -> { replies: [{ts:,key:}], parent:, numThreadReplies: }
   }
@@ -184,13 +186,7 @@ exports.init = function (sbot) {
     awaitSync(function () { cb(null, state.names) })
   }
   api.getNameTrustRanks = function (cb) {
-    awaitSync(function () {
-      var ranks = {}
-      for (var id in state.names)
-        ranks[id] = (state.profiles[id].given[sbot.feed.id] && state.profiles[id].given[sbot.feed.id].name) ? 1 : 0
-      ranks[sbot.feed.id] = 1
-      cb(null, ranks)
-    })
+    awaitSync(function () { cb(null, state.nameTrustRanks) })
   }
   api.getName = function (id, cb) {
     awaitSync(function () { cb(null, state.names[id]) })

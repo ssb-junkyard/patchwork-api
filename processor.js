@@ -25,31 +25,19 @@ module.exports = function(sbot, state) {
             return
 
           // name assigned to other
-          var profile = getProfile(link.feed)
-          profile.given[author] = profile.given[author] || {}
-          profile.given[author].name = name
-
-          if (author === sbot.feed.id) {
-            // author is me, use name
-            state.names[link.feed]  = name
-            state.ids[name] = link.feed
-          }
+          var target = getProfile(link.feed)
+          target.assignedBy[author] = target.assignedBy[author] || {}
+          target.assignedBy[author].name = name
+          var source = getProfile(author)
+          source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
+          source.assignedTo[link.feed].name = name
+          rebuildNamesFor(link.feed)
         })
       } else {
         // name assigned to self
         var profile = getProfile(author)
         profile.self.name = name
-
-        if (author === sbot.feed.id) {
-          // author is me, use name
-          state.names[author] = name
-          state.ids[name] = author
-        }
-        else if (!state.names[author] || !profile.given[sbot.feed.id] || !profile.given[sbot.feed.id].name) {
-          // no name assigned by me, use their claimed name
-          state.names[author] = name
-          state.ids[name] = author
-        }
+        rebuildNamesFor(author)          
       }
     },
 
@@ -63,7 +51,10 @@ module.exports = function(sbot, state) {
 
       ssbmsgs.indexLinks(content, trustLinkOpts, function (link) {
         var profile = getProfile(link.feed)
-        profile.trust = link.value || 0
+        profile.trust = +link.value || 0
+        if (profile.trust === 1) state.trustedProfiles[link.feed] = profile
+        else                     delete state.trustedProfiles[link.feed]
+        rebuildNamesBy(link.feed)
       })
     },
 
@@ -136,12 +127,49 @@ module.exports = function(sbot, state) {
       state.profiles[pid] = profile = {
         id: pid,
         self: { name: null },
-        given: {},
+        assignedBy: {},
+        assignedTo: {},
         trust: 0,
         createdAt: null
       }
     }
     return profile
+  }
+
+  function rebuildNamesFor(pid) {
+    var profile = getProfile(pid)
+
+    // default to self-assigned name
+    var name = profile.self.name
+    var trust = 0
+    if (pid === sbot.feed.id) {
+      // is me, trust the self-assigned name
+      trust = 1
+    } else if (profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].name) {
+      // use name assigned by me
+      name = profile.assignedBy[sbot.feed.id].name
+      trust = 1
+    } else {
+      // try to use a name assigned by someone trusted
+      for (var id in profile.assignedBy) {
+        if (profile.assignedBy[id].name && state.trustedProfiles[id]) {
+          name = profile.assignedBy[id].name
+          trust = 1
+          break
+        }
+      }
+    }
+
+    // store
+    state.names[pid] = name
+    state.ids[name] = pid
+    state.nameTrustRanks[pid]  = trust
+  }
+
+  function rebuildNamesBy(pid) {
+    var profile = getProfile(pid)
+    for (var id in profile.assignedTo)
+      rebuildNamesFor(id)
   }
 
   var spacesRgx = /\s/g

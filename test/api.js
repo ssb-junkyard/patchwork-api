@@ -246,6 +246,8 @@ tape('trust & names', function (t) {
   schemas.addOwnName(sbot.feed, 'zed', done())
   schemas.addOwnName(alice, 'alice', done())
   schemas.addOwnName(bob, 'bob', done())
+  schemas.addOtherName(bob, alice.id, 'alicia', done())
+  schemas.addOtherName(alice, bob.id, 'robert', done())
   schemas.addTrust(sbot.feed, alice.id, 1, done())
   done(function (err) {
     if (err) throw err
@@ -256,7 +258,27 @@ tape('trust & names', function (t) {
       if (err) throw err
       t.equal(profiles[0].trust, 1)
       t.equal(profiles[1].trust, 0)
-      t.end()
+
+      sbot.phoenix.getNamesById(function (err, names) {
+        if (err) throw err
+        t.equal(names[alice.id], 'alice')
+        t.equal(names[bob.id],   'robert')
+
+        var done = multicb()
+        schemas.addTrust(sbot.feed, alice.id, 0, done())
+        schemas.addTrust(sbot.feed, bob.id, 1, done())
+        done(function (err) {
+          if (err) throw err
+
+          sbot.phoenix.getNamesById(function (err, names) {
+            if (err) throw err
+            t.equal(names[alice.id], 'alicia')
+            t.equal(names[bob.id],   'bob')
+
+            t.end()
+          })
+        })
+      })
     })
   })
 })
