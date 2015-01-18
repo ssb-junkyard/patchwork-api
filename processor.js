@@ -1,6 +1,7 @@
 var ssbmsgs = require('ssb-msgs')
 var EventEmitter = require('events').EventEmitter
 
+var trustLinkOpts = { tofeed: true, rel: 'trusts' }
 module.exports = function(sbot, state) {
 
   var events = new EventEmitter()
@@ -50,6 +51,20 @@ module.exports = function(sbot, state) {
           state.ids[name] = author
         }
       }
+    },
+
+    trust: function (msg) {
+      var content = msg.value.content
+      var author = msg.value.author
+
+      // only process self-published trust edges for now
+      if (author !== sbot.feed.id)
+        return
+
+      ssbmsgs.indexLinks(content, trustLinkOpts, function (link) {
+        var profile = getProfile(link.feed)
+        profile.trust = link.value || 0
+      })
     },
 
     post: function (msg) {
@@ -122,6 +137,7 @@ module.exports = function(sbot, state) {
         id: pid,
         self: { name: null },
         given: {},
+        trust: 0,
         createdAt: null
       }
     }
