@@ -46,8 +46,8 @@ module.exports = function(sbot, state) {
         }
         else if (!state.names[author] || !profile.given[sbot.feed.id] || !profile.given[sbot.feed.id].name) {
           // no name assigned by me, use their claimed name
-          state.names[author] = '"' + name + '"'
-          state.ids['"' + name + '"'] = author
+          state.names[author] = name
+          state.ids[name] = author
         }
       }
     },
