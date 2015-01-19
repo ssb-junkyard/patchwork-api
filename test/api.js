@@ -154,24 +154,21 @@ tape('posts by author', function (t) {
   bob  .add({ type: 'post', text: 'post by bob' }, done())
   done(function (err) {
     if (err) throw err
-    // kludge: wait for the alice.add and bob.add to be indexed
-    setTimeout(function () {
-      var done = multicb({ pluck: 1 })
-      sbot.phoenix.getPostsBy(sbot.feed.id, done())
-      sbot.phoenix.getPostsBy(alice.id, done())
-      sbot.phoenix.getPostsBy(bob.id, done())
+    var done = multicb({ pluck: 1 })
+    sbot.phoenix.getPostsBy(sbot.feed.id, done())
+    sbot.phoenix.getPostsBy(alice.id, done())
+    sbot.phoenix.getPostsBy(bob.id, done())
 
-      done(function (err, posts) {
-        if (err) throw err
-        t.equal(posts[0].length, 2)
-        t.equal(posts[0][0].value.content.text, 'post by me 2')
-        t.equal(posts[0][1].value.content.text, 'post by me 1')
-        t.equal(posts[1][0].value.content.text, 'post by alice')
-        t.equal(posts[2][0].value.content.text, 'post by bob')
+    done(function (err, posts) {
+      if (err) throw err
+      t.equal(posts[0].length, 2)
+      t.equal(posts[0][0].value.content.text, 'post by me 2')
+      t.equal(posts[0][1].value.content.text, 'post by me 1')
+      t.equal(posts[1][0].value.content.text, 'post by alice')
+      t.equal(posts[2][0].value.content.text, 'post by bob')
 
-        t.end()
-      })
-    }, 100)
+      t.end()
+    })
   })
 })
 
@@ -222,22 +219,66 @@ tape('names', function (t) {
   schemas.addOwnName(bob, 'bob', done())
   done(function (err) {
     if (err) throw err
-    // kludge: wait for the alice.add and bob.add to be indexed
-    setTimeout(function () {
+    sbot.phoenix.getNamesById(function (err, names) {
+      if (err) throw err
+      t.equal(names[sbot.feed.id], 'zed')
+      t.equal(names[alice.id],     'alice')
+      t.equal(names[bob.id],       'robert')
+
+      sbot.phoenix.getIdsByName(function (err, ids) {
+        if (err) throw err
+        t.equal(ids['zed'],     sbot.feed.id)
+        t.equal(ids['alice'],   alice.id)
+        t.equal(ids['robert'],  bob.id)
+        t.end()
+      })
+    })
+  })
+})
+
+tape('trust & names', function (t) {
+  var sbot = require('./util').newserver()
+
+  var alice = sbot.ssb.createFeed(ssbKeys.generate())
+  var bob   = sbot.ssb.createFeed(ssbKeys.generate())
+
+  var done = multicb()
+  schemas.addOwnName(sbot.feed, 'zed', done())
+  schemas.addOwnName(alice, 'alice', done())
+  schemas.addOwnName(bob, 'bob', done())
+  schemas.addOtherName(bob, alice.id, 'alicia', done())
+  schemas.addOtherName(alice, bob.id, 'robert', done())
+  schemas.addTrust(sbot.feed, alice.id, 1, done())
+  done(function (err) {
+    if (err) throw err
+    var done = multicb({ pluck: 1 })
+    sbot.phoenix.getProfile(alice.id, done())
+    sbot.phoenix.getProfile(bob.id, done())
+    done(function (err, profiles) {
+      if (err) throw err
+      t.equal(profiles[0].trust, 1)
+      t.equal(profiles[1].trust, 0)
+
       sbot.phoenix.getNamesById(function (err, names) {
         if (err) throw err
-        t.equal(names[sbot.feed.id], 'zed')
-        t.equal(names[alice.id],     '"alice"')
-        t.equal(names[bob.id],       'robert')
+        t.equal(names[alice.id], 'alice')
+        t.equal(names[bob.id],   'robert')
 
-        sbot.phoenix.getIdsByName(function (err, ids) {
+        var done = multicb()
+        schemas.addTrust(sbot.feed, alice.id, 0, done())
+        schemas.addTrust(sbot.feed, bob.id, 1, done())
+        done(function (err) {
           if (err) throw err
-          t.equal(ids['zed'],     sbot.feed.id)
-          t.equal(ids['"alice"'], alice.id)
-          t.equal(ids['robert'],  bob.id)
-          t.end()
+
+          sbot.phoenix.getNamesById(function (err, names) {
+            if (err) throw err
+            t.equal(names[alice.id], 'alicia')
+            t.equal(names[bob.id],   'bob')
+
+            t.end()
+          })
         })
       })
-    }, 100)
+    })
   })
 })
