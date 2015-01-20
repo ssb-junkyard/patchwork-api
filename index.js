@@ -214,7 +214,19 @@ exports.init = function (sbot) {
         var done = multicb({ pluck: 1 })
         index
           .slice(start, end)
-          .forEach(function (v) { api.getMsg(v.key, done()) })
+          .forEach(function (v) {
+            var msgCb = done()
+            api.getMsg(v.key, function (err, msg) {
+              if (err) {
+                // suppress this error
+                // the message isnt in the local cache (yet)
+                // but it got into the index, likely due to a link
+                // instead of an error, we'll put a null there to indicate the gap
+                msg = { key: v.key, msg: null }
+              }
+              msgCb(null, msg)
+            })
+          })
         done(cb)
       })
     }
