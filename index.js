@@ -2,6 +2,7 @@ var pull     = require('pull-stream')
 var ssbmsgs  = require('ssb-msgs')
 var multicb  = require('multicb')
 var memview  = require('level-memview')
+var pl       = require('pull-level')
 var pushable = require('pull-pushable')
 
 exports.manifest    = require('./manifest')
@@ -29,16 +30,33 @@ exports.init = function (sbot) {
   state.postsByAuthor[sbot.feed.id] = state.myposts // alias myposts inside postsByAuthor
 
   var processor = require('./processor')(sbot, state)
-  var awaitSync = memview(sbot.ssb, processor, function () { return null })
+  pull(pl.read(sbot.ssb.sublevel('log'), { live: true, onSync: onSync }), pull.drain(processor))
 
   // track sync state
-  var isSynced = false
-  awaitSync(function () { isSynced = true })
+  var isPreHistorySynced = false, nP = 0, syncCbs = []
+  function onSync () {
+    syncCbs.forEach(function (cb) { cb() })
+    syncCbs.length = 0
+  }
+  function awaitSync (cb) {
+    if (!isPreHistorySynced || nP > 0)
+      syncCbs.push(cb)
+    else cb()
+  }
+  state.pinc = function () { nP++ }
+  state.pdec = function () {
+    nP--
+    if (nP === 0)
+      onSync()
+  }
+  awaitSync(function () {
+    isPreHistorySynced = true
+  })
 
   // events stream
   var eventsStream = pushable()
   processor.events.on('post', function (post) {
-    if (isSynced)
+    if (isPreHistorySynced)
       eventsStream.push({ type: 'post', post: post })
   })
 
@@ -155,7 +173,7 @@ exports.init = function (sbot) {
     awaitSync(function () { cb(null, state.posts.length) })
   }
   api.getPostsBy = function (author, opts, cb) {
-    listGetter(state.postsByAuthor[author] || [])(opts, cb)
+    awaitSync(function () { listGetter(state.postsByAuthor[author] || [])(opts, cb) })
   }
   api.getInbox = listGetter(state.inbox)
   api.getInboxCount = function (cb) { 
