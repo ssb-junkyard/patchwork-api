@@ -202,7 +202,7 @@ module.exports = function(sbot, state) {
       try { process(msg) }
       catch (e) {
         // :TODO: use sbot logging plugin
-        console.warn('Failed to process message', e, msg)
+        console.error('Failed to process message', e, msg)
       }
     }
   }
