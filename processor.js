@@ -154,7 +154,7 @@ module.exports = function(sbot, state) {
       for (var id in profile.assignedBy) {
         if (profile.assignedBy[id].name && state.trustedProfiles[id]) {
           name = profile.assignedBy[id].name
-          trust = 1
+          trust = 0.5
           break
         }
       }
@@ -162,8 +162,13 @@ module.exports = function(sbot, state) {
 
     // store
     state.names[pid] = name
-    state.ids[name] = pid
-    state.nameTrustRanks[pid]  = trust
+    if (!state.ids[name])
+      state.ids[name] = pid
+    else {
+      if (trust >= state.nameTrustRanks[state.ids[name]])
+        state.ids[name] = pid
+    }
+    state.nameTrustRanks[pid] = trust
   }
 
   function rebuildNamesBy(pid) {
