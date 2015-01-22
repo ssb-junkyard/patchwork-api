@@ -161,6 +161,7 @@ tape('posts by author', function (t) {
 
     done(function (err, posts) {
       if (err) throw err
+      t.equal(posts.length, 3)
       t.equal(posts[0].length, 2)
       t.equal(posts[0][0].value.content.text, 'post by me 2')
       t.equal(posts[0][1].value.content.text, 'post by me 1')

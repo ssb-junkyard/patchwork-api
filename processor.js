@@ -196,15 +196,19 @@ module.exports = function(sbot, state) {
 
   // exported api
 
-  function fn (msg) {
-    var process = processors[msg.value.content.type]
-    if (process) {
-      try { process(msg) }
-      catch (e) {
-        // :TODO: use sbot logging plugin
-        console.error('Failed to process message', e, msg)
+  function fn (logkey) {
+    state.pinc()
+    sbot.ssb.get(logkey.value, function (err, value) {
+      var process = processors[value.content.type]
+      if (process) {
+        try { process({ key: logkey.value, value: value }) }
+        catch (e) {
+          // :TODO: use sbot logging plugin
+          console.error('Failed to process message', e, logkey.value, value)
+        }
       }
-    }
+      state.pdec()
+    })
   }
   fn.events = events
 
