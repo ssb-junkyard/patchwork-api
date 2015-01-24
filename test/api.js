@@ -36,10 +36,12 @@ tape('feed', function (t) {
 tape('posts, replies, and inbox', function (t) {
   var sbot = require('./util').newserver()
 
-  var numNewPosts = 0
+  var numNewPosts = 0, numNotifies = 0
   pull(sbot.phoenix.events(), pull.drain(function (e) {
     if (e.type == 'post')
       numNewPosts++
+    if (e.type == 'notification')
+      numNotifies++
   }))
 
   schemas.addPost(sbot.feed, 'first', function (err, msg1) {
@@ -86,6 +88,7 @@ tape('posts, replies, and inbox', function (t) {
                       t.equal(msgs[0].value.content.text, 'hello @'+sbot.feed.id)
                       t.equal(msgs[1].value.content.text, 'second')
                       t.equal(numNewPosts, 2)
+                      t.equal(numNotifies, 2)
                       t.end()
                     })
                   })

@@ -12,6 +12,7 @@ var api = phoenixAPI.init(sbot) // create plugin api instance
 
 pull(api.events(), pull.drain(function (event))) // event emitting stream
 // emits { type: 'post', post: Object } for each new toplevel post
+// emits { type: 'notification', post: Object } for each new reply/mention event
 
 api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
 

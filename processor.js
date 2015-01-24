@@ -89,11 +89,13 @@ module.exports = function(sbot, state) {
           // add to inbox if it's a reply to this user's message
           if (!isinboxed && contains(state.myposts, link.msg)) {
             sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+            events.emit('notification', msg)
             isinboxed = true
           }
         }
         else if (link.rel == 'mentions' && link.feed === sbot.feed.id && !isinboxed) {
           sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+          events.emit('notification', msg)
           isinboxed = true
         }
       })
