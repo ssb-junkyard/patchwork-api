@@ -59,6 +59,7 @@ module.exports = function(sbot, state) {
     },
 
     post: function (msg) {
+      var byMe = (msg.value.author === sbot.feed.id)
       var content = msg.value.content
       if (empty(content.text))
         return
@@ -87,13 +88,13 @@ module.exports = function(sbot, state) {
           } while (t)
 
           // add to inbox if it's a reply to this user's message
-          if (!isinboxed && contains(state.myposts, link.msg)) {
+          if (!byMe && !isinboxed && contains(state.myposts, link.msg)) {
             sortedInsert(state.inbox, msg.value.timestamp, msg.key)
             events.emit('notification', msg)
             isinboxed = true
           }
         }
-        else if (link.rel == 'mentions' && link.feed === sbot.feed.id && !isinboxed) {
+        else if (!byMe && link.rel == 'mentions' && link.feed === sbot.feed.id && !isinboxed) {
           sortedInsert(state.inbox, msg.value.timestamp, msg.key)
           events.emit('notification', msg)
           isinboxed = true
@@ -102,7 +103,8 @@ module.exports = function(sbot, state) {
 
       if (!isreply && !contains(state.posts, msg.key)) {
         sortedInsert(state.posts, msg.value.timestamp, msg.key)
-        events.emit('post', msg)
+        if (byMe)
+          events.emit('post', msg)
       }
 
       if (!state.postsByAuthor[msg.value.author])
