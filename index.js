@@ -54,20 +54,27 @@ exports.init = function (sbot) {
   })
 
   // events stream
-  var eventsStream = pushable()
+  var eventsStreams = []
+  function emit(e) {
+    eventsStreams.forEach(function (es) {
+      es.push(e)
+    })
+  }
   processor.events.on('post', function (post) {
     if (isPreHistorySynced)
-      eventsStream.push({ type: 'post', post: post })
+      emit({ type: 'post', post: post })
   })
   processor.events.on('notification', function (post) {
     if (isPreHistorySynced)
-      eventsStream.push({ type: 'notification', post: post })
+      emit({ type: 'notification', post: post })
   })
 
   // getters
 
   api.events = function () {
-    return eventsStream
+    var es = pushable()
+    eventsStreams.push(es)
+    return es
   }
 
   api.getMyProfile = function (cb) {
