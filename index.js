@@ -59,6 +59,10 @@ exports.init = function (sbot) {
     if (isPreHistorySynced)
       eventsStream.push({ type: 'post', post: post })
   })
+  processor.events.on('notification', function (post) {
+    if (isPreHistorySynced)
+      eventsStream.push({ type: 'notification', post: post })
+  })
 
   // getters
 
