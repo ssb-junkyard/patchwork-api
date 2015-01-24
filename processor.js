@@ -103,7 +103,7 @@ module.exports = function(sbot, state) {
 
       if (!isreply && !contains(state.posts, msg.key)) {
         sortedInsert(state.posts, msg.value.timestamp, msg.key)
-        if (byMe)
+        if (!byMe)
           events.emit('post', msg)
       }
 
