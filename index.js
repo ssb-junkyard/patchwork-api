@@ -12,10 +12,8 @@ exports.init = function (sbot) {
 
   var api = {}
   var state = {
-    // indexes
-    posts: [],
-    myposts: [], // reused by `postsByAuthor` for the local user
-    postsByAuthor: {},
+    // indexes (lists of keys)
+    mymsgs: [],
     inbox: [],
     adverts: [],
 
@@ -24,10 +22,8 @@ exports.init = function (sbot) {
     trustedProfiles: {},
     names: {}, // ids -> names
     nameTrustRanks: {}, // ids -> trust-ranks
-    ids: {}, // names -> ids
-    threads: {} // maps: post key -> { replies: [{ts:,key:}], parent:, numThreadReplies: }
+    ids: {} // names -> ids
   }
-  state.postsByAuthor[sbot.feed.id] = state.myposts // alias myposts inside postsByAuthor
 
   var processor = require('./processor')(sbot, state)
   pull(pl.read(sbot.ssb.sublevel('log'), { live: true, onSync: onSync }), pull.drain(processor))
@@ -60,18 +56,18 @@ exports.init = function (sbot) {
       es.push(e)
     })
   }
-  processor.events.on('post', function (post) {
+  processor.events.on('message', function (msg) {
     if (isPreHistorySynced)
-      emit({ type: 'post', post: post })
+      emit({ type: 'message', msg: msg })
   })
-  processor.events.on('notification', function (post) {
+  processor.events.on('notification', function (msg) {
     if (isPreHistorySynced)
-      emit({ type: 'notification', post: post })
+      emit({ type: 'notification', msg: msg })
   })
 
   // getters
 
-  api.events = function () {
+  api.createEventStream = function () {
     var es = pushable()
     eventsStreams.push(es)
     return es
@@ -83,123 +79,24 @@ exports.init = function (sbot) {
     })
   }
 
-  api.getThreadMeta = function (key, cb) {
+  api.getIndexCounts = function (cb) {
     awaitSync(function () {
-      cb(null, state.threads[key])
-    })
-  }
-  api.getAllThreadMetas = function (cb) {
-    awaitSync(function () {
-      cb(null, state.threads)
-    })
-  }
-
-  api.getMsg = function (key, cb) {
-    awaitSync(function () {
-      sbot.ssb.get(key, function (err, msg) {
-        if (err) cb(err)
-        else {
-          var obj = { key: key, value: msg }
-          if (state.threads[key]) {
-            for (var k in state.threads[key])
-              obj[k] = state.threads[key][k]
-          }
-          cb(null, obj)
-        }
-      })
-    })
-  }
-  api.getReplies = function (key, cb) {
-    awaitSync(function () {
-      if (key in state.threads && state.threads[key].replies.length) {
-        var done = multicb({ pluck: 1 })
-        state.threads[key].replies.forEach(function (reply) { api.getMsg(reply.key, done()) })
-        return done(cb)
-      }
-      cb(null, [])
-    })
-  }
-  api.getPostParent = function (key, cb) {
-    awaitSync(function () {
-      if (key in state.threads && state.threads[key].parent)
-        api.getMsg(state.threads[key].parent, cb)
-      else
-        cb(null, null)
-    })
-  }
-  api.getThread = function (key, cb) {
-    awaitSync(function () {
-      var done = multicb()
-      var thread = { key: key, value: null, replies: null, numThreadReplies: 0, parent: null }
-      get(thread, done())
-
-      function get(t, cb) {
-        api.getMsg(t.key, function (err, msg) {
-          if (err) return cb(err)
-          t.value = msg.value
-          cb(null, t)
-        })
-        replies(t)
-      }
-
-      function replies(t) {
-        if (!state.threads[t.key])
-          return
-        t.parent = state.threads[t.key].parent
-        t.numThreadReplies = state.threads[t.key].numThreadReplies
-        t.replies = state.threads[t.key].replies.map(function (reply) {
-          var rt = { key: reply.key, value: null, replies: null, numThreadReplies: 0, parent: null }
-          get(rt, done())
-          return rt
-        })
-      }
-
-      done(function (err) {
-        if (err) return cb(err)
-        cb(null, thread)
+      cb(null, {
+        inbox: state.inbox.length,
+        inboxUnread: state.inbox.length, // :TODO:
+        adverts: state.adverts.length
       })
     })
   }
 
-  api.getFeed = function (opts, cb) {
-    awaitSync(function () {
-      opts = opts || {}
-      opts.keys = true
-      opts.limit = opts.limit || 30
-
-      // convert gt, gte, lt, lte so that you can do `getFeed({ gt: msg1, lt: msg2 })`
-      opts.gt  = msgToFeedDBKey(opts.gt)
-      opts.gte = msgToFeedDBKey(opts.gte)
-      opts.lt  = msgToFeedDBKey(opts.lt)
-      opts.lte = msgToFeedDBKey(opts.lte)
-
-      pull(
-        sbot.ssb.createFeedStream(opts),
-        pull.collect(cb)
-      )
-    })
-  }
-  api.getPosts = listGetter(state.posts)
-  api.getPostCount = function (cb) { 
-    awaitSync(function () { cb(null, state.posts.length) })
-  }
-  api.getPostsBy = function (author, opts, cb) {
-    awaitSync(function () { listGetter(state.postsByAuthor[author] || [])(opts, cb) })
-  }
-  api.getInbox = listGetter(state.inbox)
-  api.getInboxCount = function (cb) { 
-    awaitSync(function () { cb(null, state.inbox.length) })
-  }
-  api.getAdverts = listGetter(state.adverts)
-  api.getAdvertCount = function (cb) { 
-    awaitSync(function () { cb(null, state.adverts.length) })
-  }
+  api.createInboxStream = indexStreamFn(state.inbox)
+  api.createAdvertStream = indexStreamFn(state.adverts)
   api.getRandomAdverts = function (num, oldest, cb) {
     awaitSync(function () {
       var done = multicb({ pluck: 1 })
       for (var i = 0; i < num && i < state.adverts.length; i++) {
         var index = (Math.random()*Math.min(state.adverts.length, oldest))|0
-        api.getMsg(state.adverts[index].key, done())
+        sbot.ssb.get(state.adverts[index], done())
       }
       done(cb)
     })
@@ -230,41 +127,66 @@ exports.init = function (sbot) {
   }
 
   // helper to get messages from an index
-  function listGetter (index) {
-    return function (opts, cb) {
+  function indexStreamFn (index) {
+    return function (opts) {
+      var stream = pushable()
       awaitSync(function () {
-        if (typeof opts == 'function') {
-          cb = opts
-          opts = null
-        }
-        var start = o(opts, 'start', 0)
-        var end   = o(opts, 'end', start + 30)
 
+        // emulate the `ssb.createFeedStream` interface
+        var lt    = o(opts, 'lt')
+        var lte   = o(opts, 'lte')
+        var gt    = o(opts, 'gt')
+        var gte   = o(opts, 'gte')
+        var limit = o(opts, 'limit')
+
+        // lt, lte, gt, gte should look like:
+        // [msg.value.timestamp, msg.value.author]
+
+        var added = 0
         var done = multicb({ pluck: 1 })
-        index
-          .slice(start, end)
-          .forEach(function (v) {
-            var msgCb = done()
-            api.getMsg(v.key, function (err, msg) {
-              if (err) {
+        for (var i=0; i < index.length; i++) {
+          var row = index[i]
+
+          if (limit && added >= limit)
+            break
+
+          // we're going to only look at timestamp, because that's all that phoenix cares about
+          var invalid = !!(
+            (lt  && row.ts >= lt[0]) ||
+            (lte && row.ts > lte[0]) ||
+            (gt  && row.ts <= gt[0]) ||
+            (gte && row.ts < gte[0])
+          )
+          if (invalid)
+            continue
+          added++
+
+          ;(function (key) {
+              var msgCb = done()            
+            sbot.ssb.get(key, function (err, value) {
+              // if (err) {
                 // suppress this error
                 // the message isnt in the local cache (yet)
                 // but it got into the index, likely due to a link
                 // instead of an error, we'll put a null there to indicate the gap
-                msg = { key: v.key, msg: null }
-              }
-              msgCb(null, msg)
+              // }
+              msgCb(null, { key: key, value: value })
             })
-          })
-        done(cb)
-      })
-    }
-  }
+          })(row.key)
+        }
 
-  // helper to convert gt,gte,lt,lte params from messages into proper keys for the feeddb index
-  function msgToFeedDBKey(v) {
-    if (v && v.key && v.value)
-      return [v.value.timestamp, v.value.author]
+        done(function (err, msgs) {
+          // send all in bulk
+          // :TODO: stream, in order, as they load
+          // note, `err` should always be null due to suppression
+          console.log('sending', msgs)
+          for (var i = 0; i < msgs.length; i++)
+            stream.push(msgs[i])
+          stream.end()
+        })
+      })
+      return stream
+    }
   }
 
   return api
