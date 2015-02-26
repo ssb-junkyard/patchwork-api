@@ -11,6 +11,12 @@ exports.permissions = require('./permissions')
 exports.init = function (sbot) {
 
   var api = {}
+  var phoenixdb = sbot.ssb.sublevel('phoenix')
+  var db = {
+    sys: phoenixdb.sublevel('sys'),
+    isread: phoenixdb.sublevel('isread'),
+    subscribed: phoenixdb.sublevel('subscribed')
+  }
   var state = {
     // indexes (lists of keys)
     mymsgs: [],
@@ -100,6 +106,23 @@ exports.init = function (sbot) {
       }
       done(cb)
     })
+  }
+
+  toggleApi(db.isread, 'markRead', 'markUnread', 'isRead')
+  toggleApi(db.subscribed, 'subscribe', 'unsubscribe', 'isSubscribed')
+
+  function toggleApi(db, on, off, get) {
+    api[on] = function (key, cb) {
+      db.put(key, 1, cb)
+    }
+    api[off] = function (key, cb) {
+      db.del(key, cb) 
+    }
+    api[get] = function (key, cb) {
+      db.get(key, function (err, v) {
+        cb && cb(err, !!v)
+      })
+    }
   }
 
   api.getProfile = function (id, cb) {

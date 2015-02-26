@@ -6,6 +6,14 @@ module.exports = {
   createAdvertStream: 'source',
   getRandomAdverts: 'async',
 
+  markRead: 'async',
+  markUnread: 'async',
+  isRead: 'async',
+
+  subscribe: 'async',
+  unsubscribe: 'async',
+  isSubscribed: 'async',
+
   getMyProfile: 'async',
   getProfile: 'async',
   getAllProfiles: 'async',
