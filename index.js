@@ -108,19 +108,32 @@ exports.init = function (sbot) {
     })
   }
 
-  toggleApi(db.isread, 'markRead', 'markUnread', 'isRead')
-  toggleApi(db.subscribed, 'subscribe', 'unsubscribe', 'isSubscribed')
+  toggleApi(db.isread, 'markRead', 'markUnread', 'toggleRead', 'isRead')
+  toggleApi(db.subscribed, 'subscribe', 'unsubscribe', 'toggleSubscribed', 'isSubscribed')
 
-  function toggleApi(db, on, off, get) {
+  function toggleApi(db, on, off, toggle, get) {
     api[on] = function (key, cb) {
       db.put(key, 1, cb)
     }
     api[off] = function (key, cb) {
       db.del(key, cb) 
     }
+    api[toggle] = function (key, cb) {
+      api[get](key, function (err, v) {
+        if (!v) {
+          api[on](key, function (err) {
+            cb(err, true)
+          })
+        } else {
+          api[off](key, function (err) {
+            cb(err, false)
+          })
+        }
+      })
+    }
     api[get] = function (key, cb) {
       db.get(key, function (err, v) {
-        cb && cb(err, !!v)
+        cb && cb(null, !!v)
       })
     }
   }

@@ -8,10 +8,12 @@ module.exports = {
 
   markRead: 'async',
   markUnread: 'async',
+  toggleRead: 'async',
   isRead: 'async',
 
   subscribe: 'async',
   unsubscribe: 'async',
+  toggleSubscribed: 'async',
   isSubscribed: 'async',
 
   getMyProfile: 'async',
