@@ -1,6 +1,6 @@
-# Phoenix API
+# Phoenix API v5
 
-scuttlebot rpc methods for accessing the log from the phoenix gui
+The backend logic for Phoenix, accessed through the scuttlebot RPC interface. Adds its functions
 
 ```js
 var phoenixAPI = require('phoenix-api')
@@ -10,29 +10,24 @@ phoenixAPI.permissions // rpc permissions
 
 var api = phoenixAPI.init(sbot) // create plugin api instance
 
-pull(api.events(), pull.drain(function (event))) // event emitting stream
-// emits { type: 'post', post: Object } for each new toplevel post
-// emits { type: 'notification', post: Object } for each new reply/mention event
+pull(api.createEventStream(), pull.drain(function (event))) // event emitting stream
+// emits { type: 'mesage', msg: Object }       for each new message
+// emits { type: 'notification', msg: Object } for each reply/mention event
 
-api.getFeed({ gt:, gte:, lt:, lte:, limit:, reverse: }, cb) // get raw messages. gt/e, lt/e can be message objects
-
-api.getPosts({ start:, end: }, cb) // get post messages. start/end are offsets
-api.getPostCount(cb) // get number of post messages
-
-api.getInbox({ start:, end: }, cb) // get post messages which reply to or mention the author. start/end are offsets
-api.getInboxCount(cb) // get number of post messages in the inbox
-
-api.getAdverts({ start:, end: }, cb) // get advert messages. start/end are offsets
-api.getAdvertCount(cb) // get number of adverts
+api.getIndexCounts(cb) // => { inbox: Number, inboxUnread: Number, adverts: Number }
+api.createInboxStream({ gt: [ts], lt: [ts], gte: [ts], lte: [ts], limit: Number })
+api.createAdvertStream({ gt: [ts], lt: [ts], gte: [ts], lte: [ts], limit: Number })
 api.getRandomAdverts(num, oldest, cb) // get `num` adverts from the `oldest` most recent messages
 
-api.getMsg(key, cb) // get message data
-api.getReplies(key, cb) // get replies to a message
-api.getPostParent(key, cb) // get parent post to a reply (null if none)
-api.getThread(key, cb) // get full thread (replies, replies to replies, etc)
-api.getThreadMeta(key, cb) // gets metadata for the thread at the given key
-api.getAllThreadMetas(cb) // gets metadata for all threads in a key->meta map
-// metadata object: { parent:, replies: [keys], numThreadReplies: }
+api.markRead(key, cb)
+api.markUnread(key, cb)
+api.toggleRead(key, cb)
+api.isRead(key, cb)
+
+api.subscribe(key, cb)
+api.unsubscribe(key, cb)
+api.toggleSubscribed(key, cb)
+api.isSubscribed(key, cb)
 
 api.getMyProfile(cb) // gets this user's profile
 api.getProfile(id, cb) // gets profile

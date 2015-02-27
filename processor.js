@@ -2,7 +2,7 @@ var ssbmsgs = require('ssb-msgs')
 var EventEmitter = require('events').EventEmitter
 
 var trustLinkOpts = { tofeed: true, rel: 'trusts' }
-module.exports = function(sbot, state) {
+module.exports = function(sbot, db, state) {
 
   var events = new EventEmitter()
   var processors = {
@@ -56,68 +56,6 @@ module.exports = function(sbot, state) {
         else                     delete state.trustedProfiles[link.feed]
         rebuildNamesBy(link.feed)
       })
-    },
-
-    post: function (msg) {
-      var byMe = (msg.value.author === sbot.feed.id)
-      var content = msg.value.content
-      if (empty(content.text))
-        return
-
-      var isreply = false, isinboxed = false
-      ssbmsgs.indexLinks(content, function(link) {
-        if (link.rel == 'replies-to' && link.msg) {
-          isreply = true
-
-          // index thread
-          if (!state.threads[link.msg]) {
-            state.threads[link.msg] = { parent: null, replies: [], numThreadReplies: 0 }
-            if (!contains(state.posts, link.msg)) {
-              // index the parent as a post (it's a nonpost that now has replies, so is going to be treated as a post)
-              // - use the reply's timestamp to insert. this saves us from looking up the message, and makes some sense
-              sortedInsert(state.posts, msg.value.timestamp, link.msg)
-            }
-          }
-          sortedInsert(state.threads[link.msg].replies, msg.value.timestamp, msg.key)
-          state.threads[msg.key] = { parent: link.msg, replies: [], numThreadReplies: 0 }
-
-          var t = state.threads[link.msg]
-          do {
-            t.numThreadReplies++
-            t = state.threads[t.parent]
-          } while (t)
-
-          // add to inbox if it's a reply to this user's message
-          if (!byMe && !isinboxed && contains(state.myposts, link.msg)) {
-            sortedInsert(state.inbox, msg.value.timestamp, msg.key)
-            events.emit('notification', msg)
-            isinboxed = true
-          }
-        }
-        else if (!byMe && link.rel == 'mentions' && link.feed === sbot.feed.id && !isinboxed) {
-          sortedInsert(state.inbox, msg.value.timestamp, msg.key)
-          events.emit('notification', msg)
-          isinboxed = true
-        }
-      })
-
-      if (!isreply && !contains(state.posts, msg.key)) {
-        sortedInsert(state.posts, msg.value.timestamp, msg.key)
-        if (!byMe)
-          events.emit('post', msg)
-      }
-
-      if (!state.postsByAuthor[msg.value.author])
-        state.postsByAuthor[msg.value.author] = []
-      sortedInsert(state.postsByAuthor[msg.value.author], msg.value.timestamp, msg.key)
-    },
-
-    advert: function(msg) {
-      var content = msg.value.content
-      if (empty(content.text))
-        return
-
-      sortedInsert(state.adverts, msg.value.timestamp, msg.key)
     }
   }
 
@@ -187,13 +125,15 @@ module.exports = function(sbot, state) {
   }
 
   function sortedInsert(index, ts, key) {
+    var row = { ts: ts, key: key }
     for (var i=0; i < index.length; i++) {
       if (index[i].ts < ts) {
-        index.splice(i, 0, { ts: ts, key: key })
-        return
+        index.splice(i, 0, row)
+        return row
       }
     }
-    index.push({ ts: ts, key: key })
+    index.push(row)
+    return row
   }
 
   function contains(index, key) {
@@ -203,18 +143,55 @@ module.exports = function(sbot, state) {
     }    
   }
 
+  function attachIsRead (indexRow) {
+    db.isread.get(indexRow.key, function (err, v) {
+      indexRow.isread = !!v
+    })
+  }
+
   // exported api
 
   function fn (logkey) {
     state.pinc()
+    var key = logkey.value
     sbot.ssb.get(logkey.value, function (err, value) {
-      var process = processors[value.content.type]
-      if (process) {
-        try { process({ key: logkey.value, value: value }) }
-        catch (e) {
-          // :TODO: use sbot logging plugin
-          console.error('Failed to process message', e, logkey.value, value)
+      var msg = { key: key, value: value }
+      try {
+        var by_me = (msg.value.author === sbot.feed.id)
+        if (by_me)
+          state.mymsgs.push(msg.key)
+
+        // type processing
+        var process = processors[msg.value.content.type]
+        if (process)
+          process(msg)
+
+        // common processing
+        var c = msg.value.content
+        if (!by_me) {
+          var links = ssbmsgs.getLinks(c)
+          for (var i =0; i < links.length; i++) {
+            var link = links[i]
+            if ((link.rel == 'replies-to' || link.rel == 'branch') && link.msg) {
+              if (state.mymsgs.indexOf(link.msg) >= 0) {
+                var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+                attachIsRead(row)
+                events.emit('notification', msg)
+                break
+              }
+            }
+            else if (link.rel == 'mentions' && link.feed === sbot.feed.id) {
+              var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+              attachIsRead(row)
+              events.emit('notification', msg)
+              break
+            }
+          }
         }
+      }
+      catch (e) {
+        // :TODO: use sbot logging plugin
+        console.error('Failed to process message', e, key, value)
       }
       state.pdec()
     })

@@ -1,25 +1,20 @@
 module.exports = {
-  events: 'source',
+  createEventStream: 'source',
 
-  getFeed: 'async',
-
-  getPosts: 'async',
-  getPostsBy: 'async',
-  getPostCount: 'async',
-
-  getInbox: 'async',
-  getInboxCount: 'async',
-
-  getAdverts: 'async',
-  getAdvertCount: 'async',
+  getIndexCounts: 'async',
+  createInboxStream: 'source',
+  createAdvertStream: 'source',
   getRandomAdverts: 'async',
 
-  getMsg: 'async',
-  getReplies: 'async',
-  getPostParent: 'async',
-  getThread: 'async',
-  getThreadMeta: 'async',
-  getAllThreadMetas: 'async',
+  markRead: 'async',
+  markUnread: 'async',
+  toggleRead: 'async',
+  isRead: 'async',
+
+  subscribe: 'async',
+  unsubscribe: 'async',
+  toggleSubscribed: 'async',
+  isSubscribed: 'async',
 
   getMyProfile: 'async',
   getProfile: 'async',
