@@ -56,6 +56,11 @@ module.exports = function(sbot, db, state) {
         else                     delete state.trustedProfiles[link.feed]
         rebuildNamesBy(link.feed)
       })
+    },
+
+    advert: function (msg) {
+      if (msg.value.content.text)
+        sortedInsert(state.adverts, msg.value.timestamp, msg.key)
     }
   }
 

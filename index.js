@@ -100,9 +100,20 @@ exports.init = function (sbot) {
   api.getRandomAdverts = function (num, oldest, cb) {
     awaitSync(function () {
       var done = multicb({ pluck: 1 })
+      var used = [], index
+
       for (var i = 0; i < num && i < state.adverts.length; i++) {
-        var index = (Math.random()*Math.min(state.adverts.length, oldest))|0
-        sbot.ssb.get(state.adverts[index], done())
+        do {
+          index = (Math.random()*Math.min(state.adverts.length, oldest))|0
+        } while (used.indexOf(index) >= 0)
+
+        used.push(index)
+
+        ;(function (key, cb) {
+          sbot.ssb.get(key, function (err, msg) {
+            cb(err, (msg) ? { key: key, value: msg } : null)
+          })
+        })(state.adverts[index].key, done())
       }
       done(cb)
     })
