@@ -18,9 +18,9 @@ exports.init = function (sbot) {
     subscribed: phoenixdb.sublevel('subscribed')
   }
   var state = {
-    // indexes (lists of keys)
+    // indexes (lists of {key:, ts:})
     mymsgs: [],
-    inbox: [],
+    inbox: [], // also has `.isread`
     adverts: [],
 
     // views
@@ -31,7 +31,7 @@ exports.init = function (sbot) {
     ids: {} // names -> ids
   }
 
-  var processor = require('./processor')(sbot, state)
+  var processor = require('./processor')(sbot, db, state)
   pull(pl.read(sbot.ssb.sublevel('log'), { live: true, onSync: onSync }), pull.drain(processor))
 
   // track sync state
@@ -89,7 +89,7 @@ exports.init = function (sbot) {
     awaitSync(function () {
       cb(null, {
         inbox: state.inbox.length,
-        inboxUnread: state.inbox.length, // :TODO:
+        inboxUnread: state.inbox.filter(function (row) { return !row.isread }).length,
         adverts: state.adverts.length
       })
     })
@@ -108,34 +108,60 @@ exports.init = function (sbot) {
     })
   }
 
-  toggleApi(db.isread, 'markRead', 'markUnread', 'toggleRead', 'isRead')
-  toggleApi(db.subscribed, 'subscribe', 'unsubscribe', 'toggleSubscribed', 'isSubscribed')
-
-  function toggleApi(db, on, off, toggle, get) {
-    api[on] = function (key, cb) {
-      db.put(key, 1, cb)
-    }
-    api[off] = function (key, cb) {
-      db.del(key, cb) 
-    }
-    api[toggle] = function (key, cb) {
-      api[get](key, function (err, v) {
-        if (!v) {
-          api[on](key, function (err) {
-            cb(err, true)
-          })
-        } else {
-          api[off](key, function (err) {
-            cb(err, false)
-          })
-        }
-      })
-    }
-    api[get] = function (key, cb) {
-      db.get(key, function (err, v) {
-        cb && cb(null, !!v)
-      })
-    }
+  api.markRead = function (key, cb) {
+    var row = find(state.inbox, key)
+    if (row)
+      row.isread = true
+    db.isread.put(key, 1, cb)
+  }
+  api.markUnread = function (key, cb) {
+    var row = find(state.inbox, key)
+    if (row)
+      row.isread = false
+    db.isread.del(key, cb) 
+  }
+  api.toggleRead = function (key, cb) {
+    api.isRead(key, function (err, v) {
+      if (!v) {
+        api.markRead(key, function (err) {
+          cb(err, true)
+        })
+      } else {
+        api.markUnread(key, function (err) {
+          cb(err, false)
+        })
+      }
+    })
+  }
+  api.isRead = function (key, cb) {
+    db.isread.get(key, function (err, v) {
+      cb && cb(null, !!v)
+    })
+  }
+ 
+  api.subscribe = function (key, cb) {
+    db.subscribed.put(key, 1, cb)
+  }
+  api.unsubscribe = function (key, cb) {
+    db.subscribed.del(key, cb) 
+  }
+  api.toggleSubscribed = function (key, cb) {
+    api.isSubscribed(key, function (err, v) {
+      if (!v) {
+        api.subscribe(key, function (err) {
+          cb(err, true)
+        })
+      } else {
+        api.unsubscribe(key, function (err) {
+          cb(err, false)
+        })
+      }
+    })
+  }
+  api.isSubscribed = function (key, cb) {
+    db.subscribed.get(key, function (err, v) {
+      cb && cb(null, !!v)
+    })
   }
 
   api.getProfile = function (id, cb) {
@@ -160,6 +186,15 @@ exports.init = function (sbot) {
   // helper to get an option off an opt function (avoids the `opt || {}` pattern)
   function o (opts, k, def) {
     return opts && opts[k] !== void 0 ? opts[k] : def
+  }
+
+  // helper to get an item out of the given index
+  function find (index, key) {
+    for (var i=0; i < index.length; i++) {
+      if (index[i].key === key)
+        return index[i]
+    }
+    return null
   }
 
   // helper to get messages from an index
@@ -215,7 +250,6 @@ exports.init = function (sbot) {
           // send all in bulk
           // :TODO: stream, in order, as they load
           // note, `err` should always be null due to suppression
-          console.log('sending', msgs)
           for (var i = 0; i < msgs.length; i++)
             stream.push(msgs[i])
           stream.end()

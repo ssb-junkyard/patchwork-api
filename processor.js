@@ -2,7 +2,7 @@ var ssbmsgs = require('ssb-msgs')
 var EventEmitter = require('events').EventEmitter
 
 var trustLinkOpts = { tofeed: true, rel: 'trusts' }
-module.exports = function(sbot, state) {
+module.exports = function(sbot, db, state) {
 
   var events = new EventEmitter()
   var processors = {
@@ -125,13 +125,15 @@ module.exports = function(sbot, state) {
   }
 
   function sortedInsert(index, ts, key) {
+    var row = { ts: ts, key: key }
     for (var i=0; i < index.length; i++) {
       if (index[i].ts < ts) {
-        index.splice(i, 0, { ts: ts, key: key })
-        return
+        index.splice(i, 0, row)
+        return row
       }
     }
-    index.push({ ts: ts, key: key })
+    index.push(row)
+    return row
   }
 
   function contains(index, key) {
@@ -139,6 +141,12 @@ module.exports = function(sbot, state) {
       if (index[i].key === key)
         return true
     }    
+  }
+
+  function attachIsRead (indexRow) {
+    db.isread.get(indexRow.key, function (err, v) {
+      indexRow.isread = !!v
+    })
   }
 
   // exported api
@@ -166,13 +174,15 @@ module.exports = function(sbot, state) {
             var link = links[i]
             if ((link.rel == 'replies-to' || link.rel == 'branch') && link.msg) {
               if (state.mymsgs.indexOf(link.msg) >= 0) {
-                sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+                var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+                attachIsRead(row)
                 events.emit('notification', msg)
                 break
               }
             }
             else if (link.rel == 'mentions' && link.feed === sbot.feed.id) {
-              sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+              var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+              attachIsRead(row)
               events.emit('notification', msg)
               break
             }
