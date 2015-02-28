@@ -1,7 +1,5 @@
 var pull     = require('pull-stream')
-var ssbmsgs  = require('ssb-msgs')
 var multicb  = require('multicb')
-var memview  = require('level-memview')
 var pl       = require('pull-level')
 var pushable = require('pull-pushable')
 

@@ -1,7 +1,6 @@
-var ssbmsgs = require('ssb-msgs')
+var mlib = require('ssb-msgs')
 var EventEmitter = require('events').EventEmitter
 
-var trustLinkOpts = { tofeed: true, rel: 'trusts' }
 module.exports = function(sbot, db, state) {
 
   var events = new EventEmitter()
@@ -18,7 +17,7 @@ module.exports = function(sbot, db, state) {
         return
       var name = noSpaces(content.name)
 
-      var links = ssbmsgs.getLinks(content, 'names')
+      var links = mlib.asLinks(content.target)
       if (links.length) {
         links.forEach(function(link) {
           if (!link.feed)
@@ -49,9 +48,11 @@ module.exports = function(sbot, db, state) {
       if (author !== sbot.feed.id)
         return
 
-      ssbmsgs.indexLinks(content, trustLinkOpts, function (link) {
+      mlib.asLinks(content.target).forEach(function (link) {
+        if (!link.feed)
+          return
         var profile = getProfile(link.feed)
-        profile.trust = +link.value || 0
+        profile.trust = content.trust || 0
         if (profile.trust === 1) state.trustedProfiles[link.feed] = profile
         else                     delete state.trustedProfiles[link.feed]
         rebuildNamesBy(link.feed)
@@ -174,7 +175,7 @@ module.exports = function(sbot, db, state) {
         // common processing
         var c = msg.value.content
         if (!by_me) {
-          var links = ssbmsgs.getLinks(c)
+          var links = mlib.getLinks(c)
           for (var i =0; i < links.length; i++) {
             var link = links[i]
             if ((link.rel == 'replies-to' || link.rel == 'branch') && link.msg) {
