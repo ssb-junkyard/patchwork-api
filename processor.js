@@ -24,25 +24,24 @@ module.exports = function(sbot, db, state) {
     contact: function (msg) {
       var content = msg.value.content
       var author = msg.value.author
-      mlib.asLinks(content.target, 'feed').forEach(function (link) {
-        var profile = getProfile(link.feed)
-
+      mlib.asLinks(content.contact, 'feed').forEach(function (link) {
         // only process self-published trust edges for now
         if ('trust' in content && author !== sbot.feed.id) {
+          var profile = getProfile(link.feed)
           profile.trust = content.trust || 0
           if (profile.trust === 1) state.trustedProfiles[link.feed] = profile
           else                     delete state.trustedProfiles[link.feed]
           rebuildNamesBy(link.feed)
         }
 
-        if ('name' in content) {
+        if ('name' in content && typeof content.name == 'string' && content.name.trim()) {
           var target = getProfile(link.feed)
           target.assignedBy[author] = target.assignedBy[author] || {}
-          target.assignedBy[author].name = name
+          target.assignedBy[author].name = content.name
 
           var source = getProfile(author)
           source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
-          source.assignedTo[link.feed].name = name
+          source.assignedTo[link.feed].name = content.name
 
           rebuildNamesFor(link.feed)
         }
