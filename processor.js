@@ -15,47 +15,35 @@ module.exports = function(sbot, db, state) {
       var author = msg.value.author
       if (empty(content.name))
         return
-      var name = noSpaces(content.name)
+      getProfile(author).self.name = noSpaces(content.name)
+      rebuildNamesFor(author) 
+    },
 
-      var links = mlib.asLinks(content.target)
-      if (links.length) {
-        links.forEach(function(link) {
-          if (!link.feed)
-            return
+    contact: function (msg) {
+      var content = msg.value.content
+      var author = msg.value.author
+      mlib.asLinks(content.target, 'feed').forEach(function (link) {
+        var profile = getProfile(link.feed)
 
-          // name assigned to other
+        // only process self-published trust edges for now
+        if ('trust' in content && author !== sbot.feed.id) {
+          profile.trust = content.trust || 0
+          if (profile.trust === 1) state.trustedProfiles[link.feed] = profile
+          else                     delete state.trustedProfiles[link.feed]
+          rebuildNamesBy(link.feed)
+        }
+
+        if ('name' in content) {
           var target = getProfile(link.feed)
           target.assignedBy[author] = target.assignedBy[author] || {}
           target.assignedBy[author].name = name
+
           var source = getProfile(author)
           source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
           source.assignedTo[link.feed].name = name
+
           rebuildNamesFor(link.feed)
-        })
-      } else {
-        // name assigned to self
-        var profile = getProfile(author)
-        profile.self.name = name
-        rebuildNamesFor(author)          
-      }
-    },
-
-    trust: function (msg) {
-      var content = msg.value.content
-      var author = msg.value.author
-
-      // only process self-published trust edges for now
-      if (author !== sbot.feed.id)
-        return
-
-      mlib.asLinks(content.target).forEach(function (link) {
-        if (!link.feed)
-          return
-        var profile = getProfile(link.feed)
-        profile.trust = content.trust || 0
-        if (profile.trust === 1) state.trustedProfiles[link.feed] = profile
-        else                     delete state.trustedProfiles[link.feed]
-        rebuildNamesBy(link.feed)
+        }
       })
     },
 
@@ -175,24 +163,26 @@ module.exports = function(sbot, db, state) {
         // common processing
         var c = msg.value.content
         if (!by_me) {
-          var links = mlib.getLinks(c)
-          for (var i =0; i < links.length; i++) {
-            var link = links[i]
-            if ((link.rel == 'replies-to' || link.rel == 'branch') && link.msg) {
-              if (state.mymsgs.indexOf(link.msg) >= 0) {
-                var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
-                attachIsRead(row)
-                events.emit('notification', msg)
-                break
-              }
-            }
-            else if (link.rel == 'mentions' && link.feed === sbot.feed.id) {
+          // check if msg should go to the inbox
+          var inboxed = false
+          mlib.asLinks(c.repliesTo, 'msg').forEach(function (link) {
+            if (inboxed) return
+            if (state.mymsgs.indexOf(link.msg) >= 0) {
               var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
               attachIsRead(row)
               events.emit('notification', msg)
-              break
+              inboxed = true
             }
-          }
+          })
+          mlib.asLinks(c.mentions, 'feed').forEach(function (link) {
+            if (inboxed) return
+            if (link.feed === sbot.feed.id) {
+              var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+              attachIsRead(row)
+              events.emit('notification', msg)
+              inboxed = true
+            }
+          })
         }
       }
       catch (e) {
