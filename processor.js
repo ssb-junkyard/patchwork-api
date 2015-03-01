@@ -15,6 +15,8 @@ module.exports = function(sbot, db, state) {
       var author = msg.value.author
       if (empty(content.name))
         return
+      if (content.feed)
+        return // legacy kludge - name was intended for another user
       getProfile(author).self.name = noSpaces(content.name)
       rebuildNamesFor(author) 
     },
