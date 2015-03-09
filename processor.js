@@ -45,6 +45,16 @@ module.exports = function(sbot, db, state) {
 
           rebuildNamesFor(link.feed)
         }
+
+        if ('profilePic' in content && typeof content.profilePic == 'object' && mlib.isHash(content.profilePic.ext)) {
+          var target = getProfile(link.feed)
+          target.assignedBy[author] = target.assignedBy[author] || {}
+          target.assignedBy[author].profilePic = content.profilePic
+
+          var source = getProfile(author)
+          source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
+          source.assignedTo[link.feed].profilePic = content.profilePic
+        }
       })
     },
 
