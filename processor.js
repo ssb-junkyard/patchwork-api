@@ -10,50 +10,54 @@ module.exports = function(sbot, db, state) {
       profile.createdAt = msg.value.timestamp      
     },
 
-    name: function (msg) {
-      var content = msg.value.content
-      var author = msg.value.author
-      if (empty(content.name))
-        return
-      if (content.feed)
-        return // legacy kludge - name was intended for another user
-      getProfile(author).self.name = noSpaces(content.name)
-      rebuildNamesFor(author) 
-    },
-
     contact: function (msg) {
       var content = msg.value.content
       var author = msg.value.author
       mlib.asLinks(content.contact, 'feed').forEach(function (link) {
-        // only process self-published trust edges for now
-        if ('trust' in content && author !== sbot.feed.id) {
-          var profile = getProfile(link.feed)
-          profile.trust = content.trust || 0
-          if (profile.trust === 1) state.trustedProfiles[link.feed] = profile
-          else                     delete state.trustedProfiles[link.feed]
-          rebuildNamesBy(link.feed)
-        }
+        if (author === link.feed) {
+          // about self
 
-        if ('name' in content && typeof content.name == 'string' && content.name.trim()) {
-          var target = getProfile(link.feed)
-          target.assignedBy[author] = target.assignedBy[author] || {}
-          target.assignedBy[author].name = content.name
+          if (typeof content.name == 'string' && content.name.trim()) {
+            getProfile(author).self.name = noSpaces(content.name)
+            rebuildNamesFor(link.feed)
+          }
 
-          var source = getProfile(author)
-          source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
-          source.assignedTo[link.feed].name = content.name
+          if (typeof content.profilePic == 'object' && mlib.isHash(content.profilePic.ext)) {
+            getProfile(author).self.profilePic = content.profilePic
+          }
+        } else {
+          // about other
 
-          rebuildNamesFor(link.feed)
-        }
+          // only process self-published trust edges for now
+          if ('trust' in content && author === sbot.feed.id) {
+            var profile = getProfile(link.feed)
+            profile.trust = content.trust || 0
+            if (profile.trust === 1) state.trustedProfiles[link.feed] = profile
+            else                     delete state.trustedProfiles[link.feed]
+            rebuildNamesBy(link.feed)
+          }
 
-        if ('profilePic' in content && typeof content.profilePic == 'object' && mlib.isHash(content.profilePic.ext)) {
-          var target = getProfile(link.feed)
-          target.assignedBy[author] = target.assignedBy[author] || {}
-          target.assignedBy[author].profilePic = content.profilePic
+          if (typeof content.name == 'string' && content.name.trim()) {
+            var target = getProfile(link.feed)
+            target.assignedBy[author] = target.assignedBy[author] || {}
+            target.assignedBy[author].name = noSpaces(content.name)
 
-          var source = getProfile(author)
-          source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
-          source.assignedTo[link.feed].profilePic = content.profilePic
+            var source = getProfile(author)
+            source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
+            source.assignedTo[link.feed].name = noSpaces(content.name)
+
+            rebuildNamesFor(link.feed)
+          }
+
+          if (typeof content.profilePic == 'object' && mlib.isHash(content.profilePic.ext)) {
+            var target = getProfile(link.feed)
+            target.assignedBy[author] = target.assignedBy[author] || {}
+            target.assignedBy[author].profilePic = content.profilePic
+
+            var source = getProfile(author)
+            source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
+            source.assignedTo[link.feed].profilePic = content.profilePic
+          }
         }
       })
     },
@@ -73,7 +77,7 @@ module.exports = function(sbot, db, state) {
     if (!profile) {
       state.profiles[pid] = profile = {
         id: pid,
-        self: { name: null },
+        self: { name: null, profilePic: null },
         assignedBy: {},
         assignedTo: {},
         trust: 0,
