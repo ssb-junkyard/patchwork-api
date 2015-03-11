@@ -1,7 +1,7 @@
 var mlib = require('ssb-msgs')
 var EventEmitter = require('events').EventEmitter
 
-module.exports = function(sbot, db, state) {
+module.exports = function (sbot, db, state) {
 
   var events = new EventEmitter()
   var processors = {
@@ -16,48 +16,57 @@ module.exports = function(sbot, db, state) {
       mlib.asLinks(content.contact, 'feed').forEach(function (link) {
         if (author === link.feed) {
           // about self
+          var profile = getProfile(author)
 
           if (typeof content.name == 'string' && content.name.trim()) {
-            getProfile(author).self.name = noSpaces(content.name)
+            profile.self.name = noSpaces(content.name)
             rebuildNamesFor(link.feed)
           }
 
           if (typeof content.profilePic == 'object' && mlib.isHash(content.profilePic.ext)) {
-            getProfile(author).self.profilePic = content.profilePic
+            profile.self.profilePic = content.profilePic
           }
         } else {
           // about other
+          var target = getProfile(link.feed)
+          var source = getProfile(author)
+          target.assignedBy[author] = target.assignedBy[author] || {}
+          source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
 
           // only process self-published trust edges for now
-          if ('trust' in content && author === sbot.feed.id) {
-            var profile = getProfile(link.feed)
-            profile.trust = content.trust || 0
-            if (profile.trust === 1) state.trustedProfiles[link.feed] = profile
-            else                     delete state.trustedProfiles[link.feed]
-            rebuildNamesBy(link.feed)
+          if ('trust' in content && source.id === sbot.feed.id) {
+            target.trust = content.trust || 0
+            if (target.trust === 1) state.trustedProfiles[target.id] = target
+            else                    delete state.trustedProfiles[target.id]
+            rebuildNamesBy(target.id)
           }
 
           if (typeof content.name == 'string' && content.name.trim()) {
-            var target = getProfile(link.feed)
-            target.assignedBy[author] = target.assignedBy[author] || {}
-            target.assignedBy[author].name = noSpaces(content.name)
-
-            var source = getProfile(author)
-            source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
-            source.assignedTo[link.feed].name = noSpaces(content.name)
-
-            rebuildNamesFor(link.feed)
+            target.assignedBy[source.id].name = noSpaces(content.name)
+            source.assignedTo[target.id].name = noSpaces(content.name)
+            rebuildNamesFor(target.id)
           }
 
           if (typeof content.profilePic == 'object' && mlib.isHash(content.profilePic.ext)) {
-            var target = getProfile(link.feed)
-            target.assignedBy[author] = target.assignedBy[author] || {}
-            target.assignedBy[author].profilePic = content.profilePic
-
-            var source = getProfile(author)
-            source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
-            source.assignedTo[link.feed].profilePic = content.profilePic
+            target.assignedBy[source.id].profilePic = content.profilePic
+            source.assignedTo[target.id] = source.assignedTo[link.feed] || {}
           }
+
+          if (content.myuser === true)
+            source.users[target.id] = true
+          else if (content.myuser === false)
+            delete source.users[target.id]
+
+          if (content.myapp === true)
+            source.apps[target.id] = true
+          else if (content.myapp === false)
+            delete source.apps[target.id]
+          
+
+          if (source.id === sbot.feed.id)
+            updateActionItems(target)
+          if (target.id === sbot.feed.id)
+            updateActionItems(source)
         }
       })
     },
@@ -68,11 +77,11 @@ module.exports = function(sbot, db, state) {
     }
   }
 
-  function empty(str) {
+  function empty (str) {
     return !str || !(''+str).trim()
   }
 
-  function getProfile(pid) {
+  function getProfile (pid) {
     var profile = state.profiles[pid]
     if (!profile) {
       state.profiles[pid] = profile = {
@@ -80,6 +89,8 @@ module.exports = function(sbot, db, state) {
         self: { name: null, profilePic: null },
         assignedBy: {},
         assignedTo: {},
+        users: {},
+        apps: {},
         trust: 0,
         createdAt: null
       }
@@ -87,7 +98,7 @@ module.exports = function(sbot, db, state) {
     return profile
   }
 
-  function rebuildNamesFor(pid) {
+  function rebuildNamesFor (pid) {
     var profile = getProfile(pid)
 
     // default to self-assigned name
@@ -122,10 +133,22 @@ module.exports = function(sbot, db, state) {
     state.nameTrustRanks[pid] = trust
   }
 
-  function rebuildNamesBy(pid) {
+  function rebuildNamesBy (pid) {
     var profile = getProfile(pid)
     for (var id in profile.assignedTo)
       rebuildNamesFor(id)
+  }
+
+  function updateActionItems (target) {
+    var user = getProfile(sbot.feed.id)
+    if (target.users[user.id]) {
+      // unrequited alias?
+      if (target.trust !== -1 && !user.apps[target.id]) {
+        state.actionItems[target.id] = { feedid: target.id, action: 'confirm-app' }
+        return
+      }
+    }
+    delete state.actionItems[target.id]
   }
 
   var spacesRgx = /\s/g
@@ -133,7 +156,7 @@ module.exports = function(sbot, db, state) {
     return str.replace(spacesRgx, '_')
   }
 
-  function sortedInsert(index, ts, key) {
+  function sortedInsert (index, ts, key) {
     var row = { ts: ts, key: key }
     for (var i=0; i < index.length; i++) {
       if (index[i].ts < ts) {
@@ -145,7 +168,7 @@ module.exports = function(sbot, db, state) {
     return row
   }
 
-  function contains(index, key) {
+  function contains (index, key) {
     for (var i=0; i < index.length; i++) {
       if (index[i].key === key)
         return true
