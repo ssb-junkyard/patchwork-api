@@ -26,7 +26,8 @@ exports.init = function (sbot) {
     trustedProfiles: {},
     names: {}, // ids -> names
     nameTrustRanks: {}, // ids -> trust-ranks
-    ids: {} // names -> ids
+    ids: {}, // names -> ids
+    actionItems: {}
   }
 
   var processor = require('./processor')(sbot, db, state)
@@ -190,6 +191,9 @@ exports.init = function (sbot) {
   }
   api.getIdsByName = function (cb) {
     awaitSync(function () { cb(null, state.ids) })
+  }
+  api.getActionItems = function (cb) {
+    awaitSync(function () { cb(null, state.actionItems) })
   }
 
   // helper to get an option off an opt function (avoids the `opt || {}` pattern)
