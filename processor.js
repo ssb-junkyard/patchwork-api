@@ -11,64 +11,15 @@ module.exports = function (sbot, db, state) {
     },
 
     contact: function (msg) {
-      var content = msg.value.content
-      var author = msg.value.author
-      mlib.asLinks(content.contact, 'feed').forEach(function (link) {
-        if (author === link.feed) {
-          // about self
-          var profile = getProfile(author)
-
-          if (typeof content.name == 'string' && content.name.trim()) {
-            profile.self.name = noSpaces(content.name)
-            rebuildNamesFor(link.feed)
-          }
-
-          if (typeof content.profilePic == 'object' && mlib.isHash(content.profilePic.ext)) {
-            profile.self.profilePic = content.profilePic
-          }
+      mlib.links(msg.value.content.contact, 'feed').forEach(function (link) {
+        if (link.feed === msg.value.author) {
+          updateSelfContact(msg.value.author, msg.value.content)
         } else {
-          // about other
-          var target = getProfile(link.feed)
-          var source = getProfile(author)
-          target.assignedBy[author] = target.assignedBy[author] || {}
-          source.assignedTo[link.feed] = source.assignedTo[link.feed] || {}
-
-          // only process self-published trust edges for now
-          if ('trust' in content && source.id === sbot.feed.id) {
-            target.trust = content.trust || 0
-            if (target.trust === 1) state.trustedProfiles[target.id] = target
-            else                    delete state.trustedProfiles[target.id]
-            rebuildNamesBy(target.id)
-          }
-
-          if (typeof content.name == 'string' && content.name.trim()) {
-            target.assignedBy[source.id].name = noSpaces(content.name)
-            source.assignedTo[target.id].name = noSpaces(content.name)
-            rebuildNamesFor(target.id)
-          }
-
-          if (typeof content.profilePic == 'object' && mlib.isHash(content.profilePic.ext)) {
-            target.assignedBy[source.id].profilePic = content.profilePic
-            source.assignedTo[target.id] = source.assignedTo[link.feed] || {}
-          }
-
-          if (content.myuser === true)
-            source.users[target.id] = true
-          else if (content.myuser === false)
-            delete source.users[target.id]
-
-          if (content.myapp === true)
-            source.apps[target.id] = true
-          else if (content.myapp === false)
-            delete source.apps[target.id]
-          
-
-          if (source.id === sbot.feed.id)
-            updateActionItems(target)
-          if (target.id === sbot.feed.id)
-            updateActionItems(source)
+          updateOtherContact(msg.value.author, link.feed, msg.value.content)
         }
+        updateActionItems(link.feed)
       })
+      updateActionItems(msg.value.author)      
     },
 
     advert: function (msg) {
@@ -82,15 +33,18 @@ module.exports = function (sbot, db, state) {
   }
 
   function getProfile (pid) {
+    if (pid.id) // already a profile?
+      return pid
+
     var profile = state.profiles[pid]
     if (!profile) {
       state.profiles[pid] = profile = {
         id: pid,
-        self: { name: null, profilePic: null },
+        self: { name: null, profilePic: null, master: null },
         assignedBy: {},
         assignedTo: {},
-        users: {},
-        apps: {},
+        master: null,
+        subfeeds: {},
         trust: 0,
         createdAt: null
       }
@@ -98,53 +52,154 @@ module.exports = function (sbot, db, state) {
     return profile
   }
 
-  function rebuildNamesFor (pid) {
-    var profile = getProfile(pid)
+  function updateSelfContact (author, c) {
+    author = getProfile(author)
+
+    // name: a non-empty string
+    if (typeof c.name == 'string' && c.name.trim()) {
+      author.self.name = noSpaces(c.name)
+      rebuildNamesFor(author)
+    }
+
+    // profilePic: link to image
+    if ('profilePic' in c) {
+      if (mlib.isLink(c.profilePic, 'ext'))
+        author.self.profilePic = c.profilePic
+      else if (!c.profilePic)
+        delete author.self.profilePic
+    }
+
+    // master: link to user
+    if ('master' in c) {
+      if (mlib.isLink(c.master, 'feed'))
+        author.self.master = c.master.feed
+      else if (c.self.master == false)
+        delete author.self.master
+
+      rebuildNamesFor(author)
+      updateAliases(author, author.self.master)
+    }
+  }
+
+  function updateOtherContact (source, target, c) {
+    source = getProfile(source)
+    target = getProfile(target)
+    source.assignedTo[target.id] = source.assignedTo[target.id] || {}
+    target.assignedBy[source.id] = target.assignedBy[source.id] || {}
+
+    // trust-value: a number in the range -1, 0, 1
+    // - only process the trust-edges originating from the local user (for now)
+    if ('trust' in c && source.id === sbot.feed.id) {
+      target.trust = c.trust || 0
+      if (target.trust === 1) state.trustedProfiles[target.id] = target
+      else                    delete state.trustedProfiles[target.id]
+      rebuildNamesBy(target)
+    }
+
+    // name: a non-empty string
+    if (typeof c.name == 'string' && c.name.trim()) {
+      source.assignedTo[target.id].name = noSpaces(c.name)
+      target.assignedBy[source.id].name = noSpaces(c.name)
+      rebuildNamesFor(target)
+    }
+
+    // profilePic: link to image
+    if ('profilePic' in c) {
+      if (mlib.isLink(c.profilePic, 'ext')) {
+        source.assignedTo[target.id].profilePic = c.profilePic
+        target.assignedBy[source.id].profilePic = c.profilePic
+      } else if (!c.profilePic) {
+        delete source.assignedTo[target.id].profilePic            
+        delete target.assignedBy[source.id].profilePic
+      }
+    }
+
+    // master: link to user
+    if ('master' in c) {
+      if (mlib.isLink(c.master, 'feed')) {
+        source.assignedTo[target.id].master = c.master.feed
+        target.assignedBy[source.id].master = c.master.feed
+      } else if (!c.master) {
+        delete source.assignedTo[target.id].master            
+        delete target.assignedBy[source.id].master
+      }
+
+      rebuildNamesFor(target)
+      updateAliases(target, source)
+    }
+  }
+
+  function rebuildNamesFor (profile) {
+    profile = getProfile(profile)
 
     // default to self-assigned name
     var name = profile.self.name
-    var trust = 0
-    if (pid === sbot.feed.id) {
-      // is me, trust the self-assigned name
-      trust = 1
+    var trust = 0 // no trust
+    if (profile.id === sbot.feed.id) {
+      // is local user, trust the self-assigned name
+      trust = 1 // full trust
     } else if (profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].name) {
-      // use name assigned by me
+      // use name assigned by the local user
       name = profile.assignedBy[sbot.feed.id].name
-      trust = 1
+      trust = 1 // full trust
     } else {
       // try to use a name assigned by someone trusted
       for (var id in profile.assignedBy) {
         if (profile.assignedBy[id].name && state.trustedProfiles[id]) {
           name = profile.assignedBy[id].name
-          trust = 0.5
+          trust = 0.5 // arbitrary value between 0 and 1, as 0=untrusted, 1=trusted, and anything between is semi-trusted
+          // :TODO: more specific trust value? if there are discrete values, should it be an enum?
           break
         }
       }
     }
 
     // store
-    state.names[pid] = name
-    if (!state.ids[name])
-      state.ids[name] = pid
+    state.names[profile.id] = name
+    if (!state.ids[name]) // no conflict?
+      state.ids[name] = profile.id // take it
     else {
+      // conflict, which do we take? most trusted or, if there's a tie, most recent
+      // :TODO: may need to allow multiple IDs for a given name...
       if (trust >= state.nameTrustRanks[state.ids[name]])
-        state.ids[name] = pid
+        state.ids[name] = profile.id
     }
-    state.nameTrustRanks[pid] = trust
+
+    // store how well trusted this name is, for UI and for resolving conflicts
+    state.nameTrustRanks[profile.id] = trust
   }
 
-  function rebuildNamesBy (pid) {
-    var profile = getProfile(pid)
+  function rebuildNamesBy (profile) {
+    profile = getProfile(profile)
     for (var id in profile.assignedTo)
       rebuildNamesFor(id)
   }
 
+  function updateAliases (sub, master) {
+    sub = getProfile(sub)
+    master = getProfile(master)
+
+    // both feeds have published a master-link from sub to master
+    if (sub.self.master === master.id && master.assignedTo[sub.id] && master.assignedTo[sub.id].master === master.id) {
+      // valid alias
+      sub.master = master.id
+      master.subfeeds[sub.id] = true
+    } else {
+      // invalid alias
+      sub.master = null
+      delete master.subfeeds[sub.id]
+    }
+  }
+
   function updateActionItems (target) {
     var user = getProfile(sbot.feed.id)
-    if (target.users[user.id]) {
-      // unrequited alias?
-      if (target.trust !== -1 && !user.apps[target.id]) {
-        state.actionItems[target.id] = { feedid: target.id, action: 'confirm-app' }
+    target = getProfile(target)
+
+    // un-confirmed alias?
+    if (target.self.master === user.id && target.master !== user.id) {
+      // not flagged (deny) or added to subfeeds (confirm)?
+      if (target.trust !== -1 && !user.subfeeds[target.id]) {
+        state.actionItems[target.id] = { subid: target.id, action: 'confirm-app' }
         return
       }
     }
