@@ -76,8 +76,8 @@ module.exports = function (sbot, db, state) {
       else if (c.self.master == false)
         delete author.self.master
 
-      rebuildNamesFor(author)
       updateAliases(author, author.self.master)
+      rebuildNamesFor(author)
     }
   }
 
@@ -124,8 +124,8 @@ module.exports = function (sbot, db, state) {
         delete target.assignedBy[source.id].master
       }
 
-      rebuildNamesFor(target)
       updateAliases(target, source)
+      rebuildNamesFor(target)
     }
   }
 
@@ -133,11 +133,15 @@ module.exports = function (sbot, db, state) {
     profile = getProfile(profile)
 
     // default to self-assigned name
-    var name = profile.self.name
+    var name = (profile.self.name || shortString(profile.id))
     var trust = 0 // no trust
     if (profile.id === sbot.feed.id) {
       // is local user, trust the self-assigned name
       trust = 1 // full trust
+    } else if (profile.master && state.names[profile.master]) {
+      // create a sub-feed name
+      name = state.names[profile.master] + ' (' + name + ')'
+      trust = state.nameTrustRanks[profile.master] // assume same trust in its master's name
     } else if (profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].name) {
       // use name assigned by the local user
       name = profile.assignedBy[sbot.feed.id].name
@@ -288,4 +292,11 @@ module.exports = function (sbot, db, state) {
   fn.events = events
 
   return fn
+}
+
+function shortString (str, len) {
+  len = len || 6
+  if (str.length - 3 > len)
+    return str.slice(0, len) + '...'
+  return str
 }
