@@ -28,10 +28,6 @@ module.exports = function (sbot, db, state) {
     }
   }
 
-  function empty (str) {
-    return !str || !(''+str).trim()
-  }
-
   function getProfile (pid) {
     if (pid.id) // already a profile?
       return pid
@@ -40,13 +36,19 @@ module.exports = function (sbot, db, state) {
     if (!profile) {
       state.profiles[pid] = profile = {
         id: pid,
-        self: { name: null, profilePic: null, master: null },
+        createdAt: null,
+
+        // values assigned to...
+        self: { name: null, profilePic: null },
         assignedBy: {},
         assignedTo: {},
-        master: null,
-        subfeeds: {},
-        trust: 0,
-        createdAt: null
+
+        // aliasing
+        primary: null,
+        secondaries: {},
+
+        // local user's trust in this user
+        trust: 0
       }
     }
     return profile
@@ -56,7 +58,7 @@ module.exports = function (sbot, db, state) {
     author = getProfile(author)
 
     // name: a non-empty string
-    if (typeof c.name == 'string' && c.name.trim()) {
+    if (nonEmptyStr(c.name)) {
       author.self.name = noSpaces(c.name)
       rebuildNamesFor(author)
     }
@@ -67,17 +69,6 @@ module.exports = function (sbot, db, state) {
         author.self.profilePic = c.profilePic
       else if (!c.profilePic)
         delete author.self.profilePic
-    }
-
-    // master: link to user
-    if ('master' in c) {
-      if (mlib.isLink(c.master, 'feed'))
-        author.self.master = c.master.feed
-      else if (c.self.master == false)
-        delete author.self.master
-
-      updateAliases(author, author.self.master)
-      rebuildNamesFor(author)
     }
   }
 
@@ -97,7 +88,7 @@ module.exports = function (sbot, db, state) {
     }
 
     // name: a non-empty string
-    if (typeof c.name == 'string' && c.name.trim()) {
+    if (nonEmptyStr(c.name)) {
       source.assignedTo[target.id].name = noSpaces(c.name)
       target.assignedBy[source.id].name = noSpaces(c.name)
       rebuildNamesFor(target)
@@ -114,17 +105,10 @@ module.exports = function (sbot, db, state) {
       }
     }
 
-    // master: link to user
-    if ('master' in c) {
-      if (mlib.isLink(c.master, 'feed')) {
-        source.assignedTo[target.id].master = c.master.feed
-        target.assignedBy[source.id].master = c.master.feed
-      } else if (!c.master) {
-        delete source.assignedTo[target.id].master            
-        delete target.assignedBy[source.id].master
-      }
-
-      updateAliases(target, source)
+    // alias: string or falsey
+    if ('alias' in c && (!c.alias || nonEmptyStr(c.alias))) {
+      source.assignedTo[target.id].alias = c.alias
+      updateAliases(source, target)
       rebuildNamesFor(target)
     }
   }
@@ -138,10 +122,10 @@ module.exports = function (sbot, db, state) {
     if (profile.id === sbot.feed.id) {
       // is local user, trust the self-assigned name
       trust = 1 // full trust
-    } else if (profile.master && state.names[profile.master]) {
+    } else if (profile.primary && state.names[profile.primary]) {
       // create a sub-feed name
-      name = state.names[profile.master] + ' (' + name + ')'
-      trust = state.nameTrustRanks[profile.master] // assume same trust in its master's name
+      name = state.names[profile.primary] + ' (' + name + ')'
+      trust = state.nameTrustRanks[profile.primary] // assume same trust in its primary's name
     } else if (profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].name) {
       // use name assigned by the local user
       name = profile.assignedBy[sbot.feed.id].name
@@ -179,19 +163,27 @@ module.exports = function (sbot, db, state) {
       rebuildNamesFor(id)
   }
 
-  function updateAliases (sub, master) {
-    sub = getProfile(sub)
-    master = getProfile(master)
+  function updateAliases (a, b) {
+    a = getProfile(a)
+    b = getProfile(b)
 
-    // both feeds have published a master-link from sub to master
-    if (sub.self.master === master.id && master.assignedTo[sub.id] && master.assignedTo[sub.id].master === master.id) {
-      // valid alias
-      sub.master = master.id
-      master.subfeeds[sub.id] = true
-    } else {
-      // invalid alias
-      sub.master = null
-      delete master.subfeeds[sub.id]
+    if (a.assignedTo[b.id] && a.assignedTo[b.id].alias === 'primary') {
+      update(b, a)
+    } 
+    if (b.assignedTo[a.id] && b.assignedTo[a.id].alias === 'primary') {
+      update(a, b)
+    }
+
+    function update(primary, secondary) {
+      // both feeds have published agreeing aliases
+      if (primary.assignedTo[secondary.id] && primary.assignedTo[secondary.id].alias === 'secondary') {
+        secondary.primary = primary.id
+        primary.secondaries[secondary.id] = true
+      } else {
+        // invalid alias
+        secondary.primary = null
+        delete primary.secondaries[secondary.id]
+      }
     }
   }
 
@@ -199,20 +191,15 @@ module.exports = function (sbot, db, state) {
     var user = getProfile(sbot.feed.id)
     target = getProfile(target)
 
-    // un-confirmed alias?
-    if (target.self.master === user.id && target.master !== user.id) {
-      // not flagged (deny) or added to subfeeds (confirm)?
-      if (target.trust !== -1 && !user.subfeeds[target.id]) {
-        state.actionItems[target.id] = { subid: target.id, action: 'confirm-app' }
+    // aliases
+    if (target.assignedTo[user.id] && target.assignedTo[user.id].alias === 'primary') {
+      // not flagged (deny) or added to secondaries (confirm)?
+      if (target.trust !== -1 && !user.secondaries[target.id]) {
+        state.actionItems[target.id] = { secondaryId: target.id, action: 'confirm-alias' }
         return
       }
     }
     delete state.actionItems[target.id]
-  }
-
-  var spacesRgx = /\s/g
-  function noSpaces (str) {
-    return str.replace(spacesRgx, '_')
   }
 
   function sortedInsert (index, ts, key) {
@@ -284,6 +271,7 @@ module.exports = function (sbot, db, state) {
       }
       catch (e) {
         // :TODO: use sbot logging plugin
+        throw e;
         console.error('Failed to process message', e, key, value)
       }
       state.pdec()
@@ -292,6 +280,15 @@ module.exports = function (sbot, db, state) {
   fn.events = events
 
   return fn
+}
+
+function nonEmptyStr (str) {
+    return (typeof str === 'string' && !!(''+str).trim())
+  }
+
+var spacesRgx = /\s/g
+function noSpaces (str) {
+  return str.replace(spacesRgx, '_')
 }
 
 function shortString (str, len) {
