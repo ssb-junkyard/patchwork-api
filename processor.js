@@ -271,7 +271,6 @@ module.exports = function (sbot, db, state) {
       }
       catch (e) {
         // :TODO: use sbot logging plugin
-        throw e;
         console.error('Failed to process message', e, key, value)
       }
       state.pdec()
