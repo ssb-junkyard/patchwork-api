@@ -111,6 +111,12 @@ module.exports = function (sbot, db, state) {
       updateAliases(source, target)
       rebuildNamesFor(target)
     }
+
+    // following: bool
+    if (typeof c.following === 'boolean') {
+      source.assignedTo[target.id].following = c.following
+      target.assignedBy[source.id].following = c.following
+    }
   }
 
   function rebuildNamesFor (profile) {
