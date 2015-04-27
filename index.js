@@ -30,15 +30,11 @@ exports.init = function (sbot) {
     actionItems: {}
   }
 
-  var processor = require('./processor')(sbot, db, state)
-  pull(pl.read(sbot.ssb.sublevel('log'), { live: true, onSync: onSync }), pull.drain(processor))
+  var processor = require('./processor')(sbot, db, state, emit)
+  pull(pl.read(sbot.ssb.sublevel('log'), { live: true, onSync: onPrehistorySync }), pull.drain(processor))
 
   // track sync state
   var isPreHistorySynced = false, nP = 0, syncCbs = []
-  function onSync () {
-    syncCbs.forEach(function (cb) { cb() })
-    syncCbs.length = 0
-  }
   function awaitSync (cb) {
     if (!isPreHistorySynced || nP > 0)
       syncCbs.push(cb)
@@ -48,27 +44,26 @@ exports.init = function (sbot) {
   state.pdec = function () {
     nP--
     if (nP === 0)
-      onSync()
+      onProcessingSync()
   }
-  awaitSync(function () {
-    isPreHistorySynced = true
-  })
+  function onProcessingSync () {
+    syncCbs.forEach(function (cb) { cb() })
+    syncCbs.length = 0
+  }
+  function onPrehistorySync () {
+    // use awaitSync to let any final prehistory processing to finish
+    awaitSync(function () { isPreHistorySynced = true })
+  }
 
   // events stream
   var eventsStreams = []
-  function emit(e) {
+  function emit (type) {
+    if (!isPreHistorySynced)
+      return
     eventsStreams.forEach(function (es) {
-      es.push(e)
+      es.push({ type: type })
     })
   }
-  processor.events.on('message', function (msg) {
-    if (isPreHistorySynced)
-      emit({ type: 'message', msg: msg })
-  })
-  processor.events.on('notification', function (msg) {
-    if (isPreHistorySynced)
-      emit({ type: 'notification', msg: msg })
-  })
 
   // getters
 
@@ -120,14 +115,20 @@ exports.init = function (sbot) {
 
   api.markRead = function (key, cb) {
     var row = find(state.inbox, key)
-    if (row)
+    if (row) {
+      if (!row.isread)
+        emit('inbox-remove')
       row.isread = true
+    }
     db.isread.put(key, 1, cb)
   }
   api.markUnread = function (key, cb) {
     var row = find(state.inbox, key)
-    if (row)
+    if (row) {
+      if (row.isread)
+        emit('inbox-add')
       row.isread = false
+    }
     db.isread.del(key, cb) 
   }
   api.toggleRead = function (key, cb) {
