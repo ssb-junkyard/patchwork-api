@@ -9,7 +9,9 @@ module.exports = function (sbot, db, state, emit) {
     },
 
     post: function (msg) {
-      emit('home-add')
+      // emit event if by another user
+      if (msg.value.author != sbot.feed.id)
+        emit('home-add')
     },
 
     contact: function (msg) {
