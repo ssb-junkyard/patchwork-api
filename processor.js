@@ -1,13 +1,17 @@
 var mlib = require('ssb-msgs')
-var EventEmitter = require('events').EventEmitter
 
-module.exports = function (sbot, db, state) {
+module.exports = function (sbot, db, state, emit) {
 
-  var events = new EventEmitter()
   var processors = {
     init: function (msg) {
       var profile = getProfile(msg.value.author)
       profile.createdAt = msg.value.timestamp      
+    },
+
+    post: function (msg) {
+      // emit event if by another user
+      if (msg.value.author != sbot.feed.id)
+        emit('home-add')
     },
 
     contact: function (msg) {
@@ -296,16 +300,16 @@ module.exports = function (sbot, db, state) {
             if (state.mymsgs.indexOf(link.msg) >= 0) {
               var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
               attachIsRead(row)
-              events.emit('notification', msg)
+              emit('inbox-add')
               inboxed = true
             }
           })
           mlib.asLinks(c.mentions, 'feed').forEach(function (link) {
             if (inboxed) return
-            if (link.feed === sbot.feed.id) {
+            if (link.feed == sbot.feed.id) {
               var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
               attachIsRead(row)
-              events.emit('notification', msg)
+              emit('inbox-add')
               inboxed = true
             }
           })
@@ -318,7 +322,6 @@ module.exports = function (sbot, db, state) {
       state.pdec()
     })
   }
-  fn.events = events
 
   return fn
 }
