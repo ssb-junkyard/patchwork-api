@@ -34,25 +34,32 @@ exports.init = function (sbot) {
   pull(pl.read(sbot.ssb.sublevel('log'), { live: true, onSync: onPrehistorySync }), pull.drain(processor))
 
   // track sync state
-  var isPreHistorySynced = false, nP = 0, syncCbs = []
+  // - processor does async processing for each message that comes in
+  // - awaitSync() waits for that processing to finish
+  // - pinc() on message arrival, pdec() on message processed
+  // - nP === 0 => all messages processed
+  var nP = 0, syncCbs = []
   function awaitSync (cb) {
-    if (!isPreHistorySynced || nP > 0)
+    if (nP > 0)
       syncCbs.push(cb)
     else cb()
   }
   state.pinc = function () { nP++ }
   state.pdec = function () {
     nP--
-    if (nP === 0)
-      onProcessingSync()
+    if (nP === 0) {
+      syncCbs.forEach(function (cb) { cb() })
+      syncCbs.length = 0
+    }
   }
-  function onProcessingSync () {
-    syncCbs.forEach(function (cb) { cb() })
-    syncCbs.length = 0
-  }
+
+  var isPreHistorySynced = false // track so we dont emit events for old messages
+  // grab for history sync
+  state.pinc()
   function onPrehistorySync () {
-    // use awaitSync to let any final prehistory processing to finish
     awaitSync(function () { isPreHistorySynced = true })
+    // release
+    state.pdec()
   }
 
   // events stream
