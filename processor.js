@@ -9,8 +9,10 @@ module.exports = function (sbot, db, state, emit) {
     },
 
     post: function (msg) {
-      // emit event if by another user
-      if (msg.value.author != sbot.feed.id)
+      // emit event if by a followed user and in the last hour
+      var me = getProfile(sbot.feed.id)
+      var author = msg.value.author
+      if (author != sbot.feed.id && me.assignedTo[author] && me.assignedTo[author].following && ((Date.now() - msg.value.timestamp) < 1000*60*60))
         emit('home-add')
     },
 
