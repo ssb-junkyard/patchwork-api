@@ -1,4 +1,5 @@
 var mlib = require('ssb-msgs')
+var u = require('./util')
 
 module.exports = function (sbot, db, state, emit) {
 
@@ -30,7 +31,7 @@ module.exports = function (sbot, db, state, emit) {
 
     advert: function (msg) {
       if (msg.value.content.text)
-        sortedInsert(state.adverts, msg.value.timestamp, msg.key)
+        u.sortedInsert(state.adverts, msg.value.timestamp, msg.key)
     },
 
     vote: function (msg) {
@@ -250,25 +251,6 @@ module.exports = function (sbot, db, state, emit) {
     delete state.actionItems[target.id]
   }
 
-  function sortedInsert (index, ts, key) {
-    var row = { ts: ts, key: key }
-    for (var i=0; i < index.length; i++) {
-      if (index[i].ts < ts) {
-        index.splice(i, 0, row)
-        return row
-      }
-    }
-    index.push(row)
-    return row
-  }
-
-  function contains (index, key) {
-    for (var i=0; i < index.length; i++) {
-      if (index[i].key === key)
-        return true
-    }    
-  }
-
   function attachIsRead (indexRow) {
     db.isread.get(indexRow.key, function (err, v) {
       indexRow.isread = !!v
@@ -300,7 +282,7 @@ module.exports = function (sbot, db, state, emit) {
           mlib.asLinks(c.repliesTo, 'msg').forEach(function (link) {
             if (inboxed) return
             if (state.mymsgs.indexOf(link.msg) >= 0) {
-              var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+              var row = u.sortedInsert(state.inbox, msg.value.timestamp, msg.key)
               attachIsRead(row)
               emit('inbox-add')
               inboxed = true
@@ -309,17 +291,43 @@ module.exports = function (sbot, db, state, emit) {
           mlib.asLinks(c.mentions, 'feed').forEach(function (link) {
             if (inboxed) return
             if (link.feed == sbot.feed.id) {
-              var row = sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+              var row = u.sortedInsert(state.inbox, msg.value.timestamp, msg.key)
               attachIsRead(row)
               emit('inbox-add')
               inboxed = true
             }
           })
         }
+
+        // check if it should go in the home view
+        if ((c.type == 'post' || c.type == 'fact') && !c.repliesTo) {
+          var row = u.sortedInsert(state.home, msg.value.timestamp, msg.key)
+          attachIsRead(row)
+          emit('home-add')
+        } else if (c.type == 'post' && mlib.link(c.repliesTo, 'msg')) {
+          u.getRootMsg(sbot, msg, function (err, rootmsg) {
+            if (!rootmsg)
+              return
+
+            var row
+            var index = u.indexOf(state.home, rootmsg.key)
+            if (index !== -1) {
+              // readd to home stream at new TS              
+              row = state.home[index]
+              if (row.ts < msg.value.timestamp) {
+                state.home.splice(index, 1)
+                row = u.sortedInsert(state.home, msg.value.timestamp, rootmsg.key)
+              }              
+            } else {
+              // add to index
+              row = u.sortedInsert(state.home, msg.value.timestamp, rootmsg.key)
+            }
+          })
+        }
       }
       catch (e) {
         // :TODO: use sbot logging plugin
-        console.error('Failed to process message', e, key, value)
+        console.error('Failed to process message', e, e.stack, key, value)
       }
       state.pdec()
     })

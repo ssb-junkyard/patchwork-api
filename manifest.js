@@ -3,6 +3,7 @@ module.exports = {
 
   getIndexCounts: 'async',
   createInboxStream: 'source',
+  createHomeStream: 'source',
   createAdvertStream: 'source',
   getRandomAdverts: 'async',
 

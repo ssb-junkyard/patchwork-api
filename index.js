@@ -2,6 +2,7 @@ var pull     = require('pull-stream')
 var multicb  = require('multicb')
 var pl       = require('pull-level')
 var pushable = require('pull-pushable')
+var u        = require('./util')
 
 exports.manifest    = require('./manifest')
 exports.permissions = require('./permissions')
@@ -18,6 +19,7 @@ exports.init = function (sbot) {
   var state = {
     // indexes (lists of {key:, ts:})
     mymsgs: [],
+    home: [], // also has `.isread`
     inbox: [], // also has `.isread`
     adverts: [],
 
@@ -91,12 +93,14 @@ exports.init = function (sbot) {
       cb(null, {
         inbox: state.inbox.length,
         inboxUnread: state.inbox.filter(function (row) { return !row.isread }).length,
+        home: state.home.length,
         adverts: state.adverts.length
       })
     })
   }
 
   api.createInboxStream = indexStreamFn(state.inbox)
+  api.createHomeStream = indexStreamFn(state.home)
   api.createAdvertStream = indexStreamFn(state.adverts)
   api.getRandomAdverts = function (num, oldest, cb) {
     awaitSync(function () {
@@ -121,7 +125,7 @@ exports.init = function (sbot) {
   }
 
   api.markRead = function (key, cb) {
-    var row = find(state.inbox, key)
+    var row = u.find(state.inbox, key)
     if (row) {
       if (!row.isread)
         emit('inbox-remove')
@@ -130,7 +134,7 @@ exports.init = function (sbot) {
     db.isread.put(key, 1, cb)
   }
   api.markUnread = function (key, cb) {
-    var row = find(state.inbox, key)
+    var row = u.find(state.inbox, key)
     if (row) {
       if (row.isread)
         emit('inbox-add')
@@ -152,9 +156,18 @@ exports.init = function (sbot) {
     })
   }
   api.isRead = function (key, cb) {
-    db.isread.get(key, function (err, v) {
-      cb && cb(null, !!v)
-    })
+    if (Array.isArray(key)) {
+      var done = multicb({ pluck: 1 })
+      key.forEach(function (k, i) {
+        var cb = done()
+        db.isread.get(k, function (err, v) { cb(null, !!v) })
+      })
+      done(cb)
+    } else {
+      db.isread.get(key, function (err, v) {
+        cb && cb(null, !!v)
+      })
+    }
   }
  
   api.subscribe = function (key, cb) {
@@ -209,15 +222,6 @@ exports.init = function (sbot) {
     return opts && opts[k] !== void 0 ? opts[k] : def
   }
 
-  // helper to get an item out of the given index
-  function find (index, key) {
-    for (var i=0; i < index.length; i++) {
-      if (index[i].key === key)
-        return index[i]
-    }
-    return null
-  }
-
   // helper to get messages from an index
   function indexStreamFn (index) {
     return function (opts) {
@@ -253,18 +257,18 @@ exports.init = function (sbot) {
             continue
           added++
 
-          ;(function (key) {
-              var msgCb = done()            
-            sbot.ssb.get(key, function (err, value) {
+          ;(function (row) {
+            var msgCb = done()            
+            sbot.ssb.get(row.key, function (err, value) {
               // if (err) {
                 // suppress this error
                 // the message isnt in the local cache (yet)
                 // but it got into the index, likely due to a link
                 // instead of an error, we'll put a null there to indicate the gap
               // }
-              msgCb(null, { key: key, value: value })
+              msgCb(null, { key: row.key, value: value, isread: row.isread })
             })
-          })(row.key)
+          })(row)
         }
 
         done(function (err, msgs) {
