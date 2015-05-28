@@ -301,27 +301,14 @@ module.exports = function (sbot, db, state, emit) {
 
         // check if it should go in the home view
         if ((c.type == 'post' || c.type == 'fact') && !c.repliesTo) {
-          var row = u.sortedInsert(state.home, msg.value.timestamp, msg.key)
+          var row = u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
           attachIsRead(row)
           emit('home-add')
         } else if (c.type == 'post' && mlib.link(c.repliesTo, 'msg')) {
           u.getRootMsg(sbot, msg, function (err, rootmsg) {
             if (!rootmsg)
               return
-
-            var row
-            var index = u.indexOf(state.home, rootmsg.key)
-            if (index !== -1) {
-              // readd to home stream at new TS              
-              row = state.home[index]
-              if (row.ts < msg.value.timestamp) {
-                state.home.splice(index, 1)
-                row = u.sortedInsert(state.home, msg.value.timestamp, rootmsg.key)
-              }              
-            } else {
-              // add to index
-              row = u.sortedInsert(state.home, msg.value.timestamp, rootmsg.key)
-            }
+            u.sortedUpsert(state.home, msg.value.timestamp, rootmsg.key)
           })
         }
       }

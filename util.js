@@ -12,6 +12,21 @@ module.exports.sortedInsert = function (index, ts, key) {
   return row
 }
 
+module.exports.sortedUpsert = function (index, ts, key) {
+  var i = module.exports.indexOf(index, key)
+  if (i !== -1) {
+    // readd to index at new TS
+    if (index[i].ts < ts) {
+      index.splice(i, 1)
+      return module.exports.sortedInsert(index, ts, key)
+    } else
+      return index[i]
+  } else {
+    // add to index
+    return module.exports.sortedInsert(index, ts, key)
+  }
+}
+
 module.exports.indexOf = function (index, key) {
   for (var i=0; i < index.length; i++) {
     if (index[i].key === key)
