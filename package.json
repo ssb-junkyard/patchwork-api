@@ -21,7 +21,6 @@
     "osenv": "~0.1.0",
     "rimraf": "~2.2.8",
     "scuttlebot": "~3.0.0",
-    "secure-scuttlebutt": "~8.1.0",
     "ssb-keys": "~0.4.1",
     "ssb-msg-schemas": "~3.1.0",
     "tape": "~3.0.0"
