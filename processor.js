@@ -77,7 +77,7 @@ module.exports = function (sbot, db, state, emit) {
 
     // name: a non-empty string
     if (nonEmptyStr(c.name)) {
-      author.self.name = noSpaces(c.name)
+      author.self.name = makeNameSafe(c.name)
       rebuildNamesFor(author)
     }
 
@@ -107,8 +107,8 @@ module.exports = function (sbot, db, state, emit) {
 
     // name: a non-empty string
     if (nonEmptyStr(c.name)) {
-      source.assignedTo[target.id].name = noSpaces(c.name)
-      target.assignedBy[source.id].name = noSpaces(c.name)
+      source.assignedTo[target.id].name = makeNameSafe(c.name)
+      target.assignedBy[source.id].name = makeNameSafe(c.name)
       rebuildNamesFor(target)
     }
 
@@ -327,9 +327,9 @@ function nonEmptyStr (str) {
     return (typeof str === 'string' && !!(''+str).trim())
   }
 
-var spacesRgx = /\s/g
-function noSpaces (str) {
-  return str.replace(spacesRgx, '_')
+var badNameCharsRegex = /[^A-z0-9\._-]/g
+function makeNameSafe (str) {
+  return str.replace(badNameCharsRegex, '_')
 }
 
 function shortString (str, len) {
