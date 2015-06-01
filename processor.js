@@ -27,18 +27,6 @@ module.exports = function (sbot, db, state, emit) {
         updateActionItems(link.feed)
       })
       updateActionItems(msg.value.author)      
-    },
-
-    advert: function (msg) {
-      if (msg.value.content.text)
-        u.sortedInsert(state.adverts, msg.value.timestamp, msg.key)
-    },
-
-    vote: function (msg) {
-      // process votes about users
-      mlib.links(msg.value.content.voteTopic, 'feed').forEach(function (link) {
-        tallyVote(msg.value.author, link.feed, msg.value.content)
-      })
     }
   }
 
@@ -62,11 +50,7 @@ module.exports = function (sbot, db, state, emit) {
         secondaries: {},
 
         // local user's 
-        trust: 0,
-
-        // network vote tallies
-        upvotes: 0,
-        downvotes: 0
+        trust: 0
       }
     }
     return profile
@@ -135,31 +119,6 @@ module.exports = function (sbot, db, state, emit) {
       source.assignedTo[target.id].following = c.following
       target.assignedBy[source.id].following = c.following
     }
-  }
-
-  function tallyVote (source, target, c) {
-    var vote = c.vote
-    if (!(vote === 1 || vote === 0 || vote === -1))
-      return
-
-    source = getProfile(source)
-    target = getProfile(target)
-
-    source.assignedTo[target.id] = source.assignedTo[target.id] || {}
-    target.assignedBy[source.id] = target.assignedBy[source.id] || {}
-
-    var oldvote = source.assignedTo[target.id].vote
-    source.assignedTo[target.id].vote = vote
-    target.assignedBy[source.id].vote = vote
-
-    if (oldvote === 1)
-      target.upvotes--
-    if (oldvote === -1)
-      target.downvotes--
-    if (vote === 1)
-      target.upvotes++
-    if (vote === -1)
-      target.downvotes++
   }
 
   function rebuildNamesFor (profile) {

@@ -21,7 +21,6 @@ exports.init = function (sbot) {
     mymsgs: [],
     home: [], // also has `.isread`
     inbox: [], // also has `.isread`
-    adverts: [],
 
     // views
     profiles: {},
@@ -93,36 +92,13 @@ exports.init = function (sbot) {
       cb(null, {
         inbox: state.inbox.length,
         inboxUnread: state.inbox.filter(function (row) { return !row.isread }).length,
-        home: state.home.length,
-        adverts: state.adverts.length
+        home: state.home.length
       })
     })
   }
 
   api.createInboxStream = indexStreamFn(state.inbox)
   api.createHomeStream = indexStreamFn(state.home)
-  api.createAdvertStream = indexStreamFn(state.adverts)
-  api.getRandomAdverts = function (num, oldest, cb) {
-    awaitSync(function () {
-      var done = multicb({ pluck: 1 })
-      var used = [], index
-
-      for (var i = 0; i < num && i < state.adverts.length; i++) {
-        do {
-          index = (Math.random()*Math.min(state.adverts.length, oldest))|0
-        } while (used.indexOf(index) >= 0)
-
-        used.push(index)
-
-        ;(function (key, cb) {
-          sbot.ssb.get(key, function (err, msg) {
-            cb(err, (msg) ? { key: key, value: msg } : null)
-          })
-        })(state.adverts[index].key, done())
-      }
-      done(cb)
-    })
-  }
 
   api.markRead = function (key, cb) {
     var row = u.find(state.inbox, key)
