@@ -12,7 +12,6 @@ exports.init = function (sbot) {
   var api = {}
   var phoenixdb = sbot.ssb.sublevel('phoenix')
   var db = {
-    sys: phoenixdb.sublevel('sys'),
     isread: phoenixdb.sublevel('isread'),
     subscribed: phoenixdb.sublevel('subscribed')
   }
