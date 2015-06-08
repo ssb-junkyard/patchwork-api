@@ -224,6 +224,7 @@ module.exports = function (sbot, db, state, emit) {
     sbot.ssb.get(logkey.value, function (err, value) {
       var msg = { key: key, value: value }
       try {
+        var me = getProfile(sbot.feed.id)
         var by_me = (msg.value.author === sbot.feed.id)
         if (by_me)
           state.mymsgs.push(msg.key)
@@ -268,7 +269,22 @@ module.exports = function (sbot, db, state, emit) {
             if (!rootmsg)
               return
             u.sortedUpsert(state.home, msg.value.timestamp, rootmsg.key)
+            emit('home-add')
           })
+        } /*else if (c.type == 'contact' && c.following) {
+          var userlink = mlib.link(c.contact, 'feed')
+          if (userlink && userlink.feed == sbot.feed.id) {
+            u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
+            emit('home-add')
+          }
+        }*/
+        else if (c.type == 'contact' && c.trust == -1 && me.assignedTo[msg.value.author] && me.assignedTo[msg.value.author].following) {
+          var userlink = mlib.link(c.contact, 'feed')
+          if (userlink && me.assignedTo[userlink.feed] && me.assignedTo[userlink.feed].following) {
+            // a flag of somebody the user follows, add to home
+            u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
+            emit('home-add')
+          }
         }
       }
       catch (e) {
