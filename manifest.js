@@ -3,6 +3,8 @@ module.exports = {
 
   getIndexCounts: 'async',
   createInboxStream: 'source',
+  createVoteStream: 'source',
+  createFollowStream: 'source',
   createHomeStream: 'source',
 
   markRead: 'async',

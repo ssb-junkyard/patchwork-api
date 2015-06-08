@@ -20,6 +20,8 @@ exports.init = function (sbot) {
     mymsgs: [],
     home: [], // also has `.isread`
     inbox: [], // also has `.isread`
+    votes: [], // also has `.isread`, `.vote`, and `.votemsg`
+    follows: [], // also has `.isread` and `.following`
 
     // views
     profiles: {},
@@ -91,31 +93,77 @@ exports.init = function (sbot) {
       cb(null, {
         inbox: state.inbox.length,
         inboxUnread: state.inbox.filter(function (row) { return !row.isread }).length,
+        upvotes: state.votes.filter(function (row) { return row.vote > 0 }).length,
+        upvotesUnread: state.votes.filter(function (row) { return row.vote > 0 && !row.isread }).length,
+        follows: state.follows.filter(function (row) { return row.following }).length,
+        followsUnread: state.follows.filter(function (row) { return row.following && !row.isread }).length,
         home: state.home.length
       })
     })
   }
 
   api.createInboxStream = indexStreamFn(state.inbox)
+  api.createVoteStream = indexStreamFn(state.votes, function (row) { 
+    if (row.vote <= 0) return false
+    return row.votemsg
+  })
+  api.createFollowStream = indexStreamFn(state.follows, function (row) { 
+    if (!row.following) return false
+    return row.followmsg
+  })
   api.createHomeStream = indexStreamFn(state.home)
 
-  api.markRead = function (key, cb) {
-    var row = u.find(state.inbox, key)
+  function indexMarkRead (indexname, key, keyname) {
+    if (Array.isArray(key)) {
+      key.forEach(function (k) {
+        indexMarkRead(indexname, k, keyname)
+      })
+      return
+    }
+
+    var index = state[indexname]
+    var row = u.find(index, key, keyname)
     if (row) {
       if (!row.isread)
-        emit('inbox-remove')
+        emit(indexname+'-remove')
       row.isread = true
     }
-    db.isread.put(key, 1, cb)
   }
-  api.markUnread = function (key, cb) {
-    var row = u.find(state.inbox, key)
+
+  function indexMarkUnread (indexname, key, keyname) {
+    if (Array.isArray(key)) {
+      key.forEach(function (k) {
+        indexMarkUnread(indexname, k, keyname)
+      })
+      return
+    }
+
+    var index = state[indexname]
+    var row = u.find(index, key, keyname)
     if (row) {
       if (row.isread)
-        emit('inbox-add')
+        emit(indexname+'-add')
       row.isread = false
     }
-    db.isread.del(key, cb) 
+  }
+
+  api.markRead = function (key, cb) {
+    indexMarkRead('inbox', key)
+    indexMarkRead('votes', key, 'votemsg')
+    indexMarkRead('follows', key, 'followmsg')
+    if (Array.isArray(key))
+      db.isread.batch(key.map(function (k) { return { type: 'put', key: k, value: 1 }}), cb)
+    else
+      db.isread.put(key, 1, cb)
+  }
+  api.markUnread = function (key, cb) {
+    indexMarkUnread('inbox', key)
+    indexMarkUnread('votes', key, 'votemsg')
+    indexMarkUnread('follows', key, 'followmsg')
+    if (Array.isArray(key))
+      db.isread.batch(key.map(function (k) { return { type: 'del', key: k }}), cb)
+    else
+      db.isread.del(key, cb) 
   }
   api.toggleRead = function (key, cb) {
     api.isRead(key, function (err, v) {
@@ -198,7 +246,7 @@ exports.init = function (sbot) {
   }
 
   // helper to get messages from an index
-  function indexStreamFn (index) {
+  function indexStreamFn (index, getkey) {
     return function (opts) {
       var stream = pushable()
       awaitSync(function () {
@@ -233,15 +281,23 @@ exports.init = function (sbot) {
           added++
 
           ;(function (row) {
-            var msgCb = done()            
-            sbot.ssb.get(row.key, function (err, value) {
+            var key = (getkey) ? getkey(row) : row.key
+            if (!key)
+              return
+            var msgCb = done()
+            sbot.ssb.get(key, function (err, value) {
               // if (err) {
                 // suppress this error
                 // the message isnt in the local cache (yet)
                 // but it got into the index, likely due to a link
                 // instead of an error, we'll put a null there to indicate the gap
               // }
-              msgCb(null, { key: row.key, value: value, isread: row.isread })
+              var obj = { key: key, value: value }
+              for (var k in row) {
+                if (!obj[k])
+                  obj[k] = row[k]
+              }
+              msgCb(null, obj)
             })
           })(row)
         }

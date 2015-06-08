@@ -27,16 +27,17 @@ module.exports.sortedUpsert = function (index, ts, key) {
   }
 }
 
-module.exports.indexOf = function (index, key) {
+module.exports.indexOf = function (index, key, keyname) {
+  keyname = keyname || 'key'
   for (var i=0; i < index.length; i++) {
-    if (index[i].key === key)
+    if (index[i][keyname] === key)
       return i
   }
   return -1
 }
 
-module.exports.find = function (index, key) {
-  var i = module.exports.indexOf(index, key)
+module.exports.find = function (index, key, keyname) {
+  var i = module.exports.indexOf(index, key, keyname)
   if (i !== -1)
     return index[i]
   return null

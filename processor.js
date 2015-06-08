@@ -20,13 +20,19 @@ module.exports = function (sbot, db, state, emit) {
     contact: function (msg) {
       mlib.links(msg.value.content.contact, 'feed').forEach(function (link) {
         if (link.feed === msg.value.author) {
-          updateSelfContact(msg.value.author, msg.value.content)
+          updateSelfContact(msg.value.author, msg)
         } else {
-          updateOtherContact(msg.value.author, link.feed, msg.value.content)
+          updateOtherContact(msg.value.author, link.feed, msg)
         }
         updateActionItems(link.feed)
       })
       updateActionItems(msg.value.author)      
+    },
+
+    vote: function (msg) {
+      var link = mlib.link(msg.value.content.voteTopic, 'msg')
+      if (link && state.mymsgs.indexOf(link.msg) >= 0) // vote on msg by me?
+        updateVoteOnMymsg(msg, link.msg)
     }
   }
 
@@ -56,7 +62,8 @@ module.exports = function (sbot, db, state, emit) {
     return profile
   }
 
-  function updateSelfContact (author, c) {
+  function updateSelfContact (author, msg) {
+    var c = msg.value.content
     author = getProfile(author)
 
     // name: a non-empty string
@@ -74,7 +81,8 @@ module.exports = function (sbot, db, state, emit) {
     }
   }
 
-  function updateOtherContact (source, target, c) {
+  function updateOtherContact (source, target, msg) {
+    var c = msg.value.content
     source = getProfile(source)
     target = getProfile(target)
     source.assignedTo[target.id] = source.assignedTo[target.id] || {}
@@ -118,6 +126,14 @@ module.exports = function (sbot, db, state, emit) {
     if (typeof c.following === 'boolean') {
       source.assignedTo[target.id].following = c.following
       target.assignedBy[source.id].following = c.following
+
+      if (target.id == sbot.feed.id) {
+        // use the follower's id as the key to this index, so we only have 1 entry per other user max
+        var row = u.sortedUpsert(state.follows, msg.value.timestamp, source.id)
+        row.following = c.following
+        row.followmsg = msg.key
+        attachIsRead(row, msg.key)
+      }
     }
   }
 
@@ -210,8 +226,19 @@ module.exports = function (sbot, db, state, emit) {
     delete state.actionItems[target.id]
   }
 
-  function attachIsRead (indexRow) {
-    db.isread.get(indexRow.key, function (err, v) {
+  function updateVoteOnMymsg (msg, targetkey) {
+    // construct a composite key which will be the same for all votes by this user on the given target
+    var votekey = targetkey + '::' + msg.value.author // lonnng fucking key
+    var row = u.sortedUpsert(state.votes, msg.value.timestamp, votekey)
+    row.vote = msg.value.content.vote
+    row.votemsg = msg.key
+    if (row.vote > 0) attachIsRead(row, msg.key)
+    else              row.isread = true // we dont care about non-upvotes
+  }
+
+  function attachIsRead (indexRow, key) {
+    key = key || indexRow.key
+    db.isread.get(key, function (err, v) {
       indexRow.isread = !!v
     })
   }
@@ -239,7 +266,7 @@ module.exports = function (sbot, db, state, emit) {
         if (!by_me) {
           // check if msg should go to the inbox
           var inboxed = false
-          mlib.asLinks(c.repliesTo, 'msg').forEach(function (link) {
+          mlib.links(c.repliesTo, 'msg').forEach(function (link) {
             if (inboxed) return
             if (state.mymsgs.indexOf(link.msg) >= 0) {
               var row = u.sortedInsert(state.inbox, msg.value.timestamp, msg.key)
@@ -248,7 +275,7 @@ module.exports = function (sbot, db, state, emit) {
               inboxed = true
             }
           })
-          mlib.asLinks(c.mentions, 'feed').forEach(function (link) {
+          mlib.links(c.mentions, 'feed').forEach(function (link) {
             if (inboxed) return
             if (link.feed == sbot.feed.id) {
               var row = u.sortedInsert(state.inbox, msg.value.timestamp, msg.key)
