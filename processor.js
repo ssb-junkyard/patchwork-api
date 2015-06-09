@@ -263,7 +263,7 @@ module.exports = function (sbot, db, state, emit) {
 
         // common processing
         var c = msg.value.content
-        if (!by_me) {
+        if (!by_me && c.type == 'post') {
           // check if msg should go to the inbox
           var inboxed = false
           mlib.links(c.repliesTo, 'msg').forEach(function (link) {
