@@ -31,7 +31,7 @@ module.exports = function (sbot, db, state, emit) {
 
     vote: function (msg) {
       var link = mlib.link(msg.value.content.voteTopic, 'msg')
-      if (link && state.mymsgs.indexOf(link.msg) >= 0) // vote on msg by me?
+      if (link && state.mymsgs.indexOf(link.msg) >= 0 && msg.value.author != sbot.feed.id) // vote on a msg by me?
         updateVoteOnMymsg(msg, link.msg)
     }
   }
