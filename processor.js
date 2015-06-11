@@ -87,13 +87,21 @@ module.exports = function (sbot, db, state, emit) {
     target = getProfile(target)
     source.assignedTo[target.id] = source.assignedTo[target.id] || {}
     target.assignedBy[source.id] = target.assignedBy[source.id] || {}
+    var userProf = getProfile(sbot.feed.id)
 
     // trust-value: a number in the range -1, 0, 1
     // - only process the trust-edges originating from the local user (for now)
     if ('trust' in c && source.id === sbot.feed.id) {
       target.trust = c.trust || 0
-      if (target.trust === 1) state.trustedProfiles[target.id] = target
-      else                    delete state.trustedProfiles[target.id]
+      if (target.trust == 1) state.trustedProfiles[target.id] = target
+      else                   delete state.trustedProfiles[target.id]
+
+      if (target.trust == -1 && userProf.assignedTo[source.id] && userProf.assignedTo[source.id].following) {
+        // new flag by a friend
+        u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
+        emit('home-add')
+      }
+
       rebuildNamesBy(target)
     }
 
@@ -133,6 +141,12 @@ module.exports = function (sbot, db, state, emit) {
         row.following = c.following
         row.followmsg = msg.key
         attachIsRead(row, msg.key)
+      }
+
+      if (c.following && userProf.assignedTo[source.id] && userProf.assignedTo[source.id].following && !userProf.assignedTo[target.id]) {
+        // new follow of a non-friend by a friend
+        u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
+        emit('home-add')
       }
     }
   }
@@ -288,8 +302,7 @@ module.exports = function (sbot, db, state, emit) {
 
         // check if it should go in the home view
         if ((c.type == 'post' || c.type == 'fact') && !c.repliesTo) {
-          var row = u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
-          attachIsRead(row)
+          u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
           emit('home-add')
         } else if (c.type == 'post' && mlib.link(c.repliesTo, 'msg')) {
           u.getRootMsg(sbot, msg, function (err, rootmsg) {
