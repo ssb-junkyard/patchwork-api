@@ -142,12 +142,6 @@ module.exports = function (sbot, db, state, emit) {
         row.followmsg = msg.key
         attachIsRead(row, msg.key)
       }
-
-      if (c.following && userProf.assignedTo[source.id] && userProf.assignedTo[source.id].following && !userProf.assignedTo[target.id]) {
-        // new follow of a non-friend by a friend
-        u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
-        emit('home-add')
-      }
     }
   }
 
@@ -305,26 +299,14 @@ module.exports = function (sbot, db, state, emit) {
           u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
           emit('home-add')
         } else if (c.type == 'post' && mlib.link(c.repliesTo, 'msg')) {
+          state.pinc() // doing some async work
           u.getRootMsg(sbot, msg, function (err, rootmsg) {
+            state.pdec()
             if (!rootmsg)
               return
             u.sortedUpsert(state.home, msg.value.timestamp, rootmsg.key)
             emit('home-add')
           })
-        } /*else if (c.type == 'contact' && c.following) {
-          var userlink = mlib.link(c.contact, 'feed')
-          if (userlink && userlink.feed == sbot.feed.id) {
-            u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
-            emit('home-add')
-          }
-        }*/
-        else if (c.type == 'contact' && c.trust == -1 && me.assignedTo[msg.value.author] && me.assignedTo[msg.value.author].following) {
-          var userlink = mlib.link(c.contact, 'feed')
-          if (userlink && me.assignedTo[userlink.feed] && me.assignedTo[userlink.feed].following) {
-            // a flag of somebody the user follows, add to home
-            u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
-            emit('home-add')
-          }
         }
       }
       catch (e) {
