@@ -301,11 +301,11 @@ module.exports = function (sbot, db, state, emit) {
         } else if (c.type == 'post' && mlib.link(c.repliesTo, 'msg')) {
           state.pinc() // doing some async work
           u.getRootMsg(sbot, msg, function (err, rootmsg) {
-            state.pdec()
             if (!rootmsg)
               return
             u.sortedUpsert(state.home, msg.value.timestamp, rootmsg.key)
             emit('home-add')
+            state.pdec()            
           })
         }
       }
