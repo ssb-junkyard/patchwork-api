@@ -179,9 +179,9 @@ module.exports = function (sbot, db, state, emit) {
         var i = state.ids[oldname].indexOf(profile.id)
         if (i !== -1) {
           state.ids[oldname].splice(i, 1)
-          if (state.ids[oldname.length] === 1) {
+          if (state.ids[oldname].length === 1) {
             // conflict resolved
-            delete state.actionItems[name]
+            delete state.actionItems[oldname]
             state.ids[oldname] = state.ids[oldname][0]
           }
         }
