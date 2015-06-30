@@ -25,9 +25,7 @@ exports.init = function (sbot) {
 
     // views
     profiles: {},
-    trustedProfiles: {},
     names: {}, // ids -> names
-    nameTrustRanks: {}, // ids -> trust-ranks
     ids: {}, // names -> ids
     actionItems: {}
   }
@@ -59,6 +57,7 @@ exports.init = function (sbot) {
   // grab for history sync
   state.pinc()
   function onPrehistorySync () {
+    // when all current items finish, consider prehistory synced (and start emitting)
     awaitSync(function () { isPreHistorySynced = true })
     // release
     state.pdec()
@@ -226,9 +225,6 @@ exports.init = function (sbot) {
   }
   api.getNamesById = function (cb) {
     awaitSync(function () { cb(null, state.names) })
-  }
-  api.getNameTrustRanks = function (cb) {
-    awaitSync(function () { cb(null, state.nameTrustRanks) })
   }
   api.getName = function (id, cb) {
     awaitSync(function () { cb(null, state.names[id]) })

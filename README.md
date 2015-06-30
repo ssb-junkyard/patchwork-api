@@ -36,7 +36,6 @@ api.getAllProfiles(cb) // gets all profiles in id->profile map
 api.getActionItems(cb) // gets tasks that need the user's attention
 
 api.getNamesById(cb) // gets map of id->names
-api.getNameTrustRanks(cb) // gets map of id->trust-ranks, where trust rank is a range from 0 (no confidence) to 1 (full confidence)
 api.getName(id, cb) // gets name for the given id
 api.getIdsByName(cb) // gets map of names->id
 ```
