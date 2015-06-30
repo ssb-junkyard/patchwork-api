@@ -150,6 +150,10 @@ module.exports = function (sbot, db, state, emit) {
       source.assignedTo[target.id].following = c.following
       target.assignedBy[source.id].following = c.following
 
+      // if from the user, update names (in case un/following changes conflict status)
+      if (source.id == sbot.feed.id)
+        rebuildNamesFor(target)
+
       // follows index
       if (target.id == sbot.feed.id) {
         // use the follower's id as the key to this index, so we only have 1 entry per other user max
@@ -164,20 +168,56 @@ module.exports = function (sbot, db, state, emit) {
   function rebuildNamesFor (profile) {
     profile = getProfile(profile)
 
+    // remove oldname from id->name map
+    var oldname = state.names[profile.id]
+    if (oldname) {
+      if (state.ids[oldname] == profile.id) {
+        // remove
+        delete state.ids[oldname]
+      } else if (Array.isArray(state.ids[oldname])) {
+        // is in a conflict, remove from conflict array
+        var i = state.ids[oldname].indexOf(profile.id)
+        if (i !== -1) {
+          state.ids[oldname].splice(i, 1)
+          if (state.ids[oldname.length] === 1) {
+            // conflict resolved
+            delete state.actionItems[name]
+            state.ids[oldname] = state.ids[oldname][0]
+          }
+        }
+      }
+    }
+
     // default to self-assigned name
-    var name = profile.self.name || ''
+    var name = profile.self.name
     if (profile.id !== sbot.feed.id && profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].name) {
       // use name assigned by the local user, if one is given
       name = profile.assignedBy[sbot.feed.id].name
     }
+    if (!name)
+      return
 
     // store
     state.names[profile.id] = name
-    if (!state.ids[name]) { // no conflict?
-      state.ids[name] = profile.id // take it
-    } else {
-      // conflict, make an action item
-      // :TODO:
+
+    // if following, update id->name map
+    if (profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].following) {
+      if (!state.ids[name]) { // no conflict?
+        // take it
+        state.ids[name] = profile.id
+      } else {
+        // keep track of all assigned ids
+        if (Array.isArray(state.ids[name]))
+          state.ids[name].push(profile.id)
+        else
+          state.ids[name] = [state.ids[name], profile.id]
+        // conflict, this needs to be handled by the user
+        state.actionItems[name] = {
+          type: 'name-conflict',
+          name: name,
+          ids: state.ids[name]
+        }
+      }
     }
   }
 
