@@ -94,8 +94,8 @@ module.exports = function (sbot, db, state, emit) {
         assignedBy: {}, // ...set by others about self
         assignedTo: {}, // ...set by self about others
 
-        // local user's 
-        trust: 0
+        // has local user flagged?
+        flagged: false
       }
     }
     return profile
@@ -128,14 +128,14 @@ module.exports = function (sbot, db, state, emit) {
     target.assignedBy[source.id] = target.assignedBy[source.id] || {}
     var userProf = getProfile(sbot.feed.id)
 
-    // trust-value: -1 (flagged) or 0 (neutral)
-    if ('trust' in c && source.id === sbot.feed.id) {
-      target.trust = c.trust || 0
-      if (target.trust == -1 && userProf.assignedTo[source.id] && userProf.assignedTo[source.id].following) {
-        // new flag by a friend
-        u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
-        emit('home-add')
-      }
+    // flagged: false, true, or an object with {reason: string}
+    if ('flagged' in c) { 
+      source.assignedTo[target.id].name = c.flagged
+      target.assignedBy[source.id].name = c.flagged
+
+      // track if by local user
+      if (source.id === sbot.feed.id)
+        target.flagged = c.flagged
     }
 
     // name: a non-empty string
