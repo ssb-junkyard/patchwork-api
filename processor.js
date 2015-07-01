@@ -271,7 +271,11 @@ function nonEmptyStr (str) {
     return (typeof str === 'string' && !!(''+str).trim())
   }
 
+// allow A-z0-9._-, dont allow a trailing .
 var badNameCharsRegex = /[^A-z0-9\._-]/g
 function makeNameSafe (str) {
-  return str.replace(badNameCharsRegex, '_')
+  str = str.replace(badNameCharsRegex, '_')
+  if (str.charAt(str.length - 1) == '.')
+    str = str.slice(0, -1) + '_'
+  return str
 }
