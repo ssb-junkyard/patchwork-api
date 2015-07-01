@@ -201,7 +201,7 @@ module.exports = function (sbot, db, state, emit) {
     state.names[profile.id] = name
 
     // if following, update id->name map
-    if (profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].following) {
+    if (profile.id === sbot.feed.id || profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].following) {
       if (!state.ids[name]) { // no conflict?
         // take it
         state.ids[name] = profile.id
