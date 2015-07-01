@@ -4,6 +4,8 @@ var pl       = require('pull-level')
 var pushable = require('pull-pushable')
 var u        = require('./util')
 
+exports.name        = 'phoenix'
+exports.version     = '1.0.0'
 exports.manifest    = require('./manifest')
 exports.permissions = require('./permissions')
 
