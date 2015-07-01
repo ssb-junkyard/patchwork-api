@@ -2,6 +2,7 @@ var pull     = require('pull-stream')
 var multicb  = require('multicb')
 var pl       = require('pull-level')
 var pushable = require('pull-pushable')
+var Notify   = require('pull-notify')
 var u        = require('./util')
 
 exports.name        = 'phoenix'
@@ -66,21 +67,17 @@ exports.init = function (sbot) {
   }
 
   // events stream
-  var eventsStreams = []
+  var notify = Notify()
   function emit (type) {
     if (!isPreHistorySynced)
       return
-    eventsStreams.forEach(function (es) {
-      es.push({ type: type })
-    })
+    notify({ type: type })
   }
 
   // getters
 
   api.createEventStream = function () {
-    var es = pushable()
-    eventsStreams.push(es)
-    return es
+    return notify.listen()
   }
 
   api.getMyProfile = function (cb) {
