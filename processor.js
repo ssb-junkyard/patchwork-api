@@ -130,8 +130,8 @@ module.exports = function (sbot, db, state, emit) {
 
     // flagged: false, true, or an object with {reason: string}
     if ('flagged' in c) { 
-      source.assignedTo[target.id].name = c.flagged
-      target.assignedBy[source.id].name = c.flagged
+      source.assignedTo[target.id].flagged = c.flagged
+      target.assignedBy[source.id].flagged = c.flagged
 
       // track if by local user
       if (source.id === sbot.feed.id)
