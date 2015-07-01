@@ -1,6 +1,6 @@
 {
   "name": "phoenix-api",
-  "version": "7.1.3",
+  "version": "8.0.0",
   "description": "scuttlebot rpc methods for accessing the log from the phoenix gui",
   "main": "index.js",
   "scripts": {
