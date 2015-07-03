@@ -23,9 +23,8 @@ module.exports = function (sbot, db, state, emit) {
         // a reply, put its *parent* in the home index
         state.pinc()
         u.getRootMsg(sbot, msg, function (err, rootmsg) {
-          if (!rootmsg)
-            return
-          u.sortedUpsert(state.home, msg.value.timestamp, rootmsg.key)
+          if (rootmsg)
+            u.sortedUpsert(state.home, msg.value.timestamp, rootmsg.key)
           state.pdec()            
         })
       }
