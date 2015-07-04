@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "multicb": "~1.1.0",
+    "pull-cat": "^1.1.7",
     "pull-level": "~1.2.0",
     "pull-notify": "0.0.0",
     "pull-paramap": "^1.1.3",

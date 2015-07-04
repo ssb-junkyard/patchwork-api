@@ -3,6 +3,7 @@ var multicb  = require('multicb')
 var pl       = require('pull-level')
 var pushable = require('pull-pushable')
 var paramap  = require('pull-paramap')
+var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
 var u        = require('./util')
 
@@ -244,21 +245,50 @@ exports.init = function (sbot) {
   // helper to get messages from an index
   function indexStreamFn (index, getkey) {
     return function (opts) {
-      var stream = pushable()
+      // emulate the `ssb.createFeedStream` interface
+      var lt    = o(opts, 'lt')
+      var lte   = o(opts, 'lte')
+      var gt    = o(opts, 'gt')
+      var gte   = o(opts, 'gte')
+      var limit = o(opts, 'limit')
+
+      // lt, lte, gt, gte should look like:
+      // [msg.value.timestamp, msg.value.author]
+
+      // helper to create emittable rows
+      function lookup (row) {
+        if (!row) return
+        var key = (getkey) ? getkey(row) : row.key
+        if (key) {
+          var rowcopy = { key: key }
+          for (var k in row) { // copy index attrs into rowcopy
+            if (!rowcopy[k]) rowcopy[k] = row[k]
+          }
+          return rowcopy
+        }
+      }
+
+      // helper to fetch rows
+      function fetch (row, cb) {
+        sbot.ssb.get(row.key, function (err, value) {
+          // if (err) {
+            // suppress this error
+            // the message isnt in the local cache (yet)
+            // but it got into the index, likely due to a link
+            // instead of an error, we'll put a null there to indicate the gap
+          // }
+          row.value = value
+          cb(null, row)
+        })
+      }
+
+      // readstream
+      var readPush = pushable()
+      var read = pull(readPush, paramap(fetch))
+
+      // await sync, then emit the reads
       awaitSync(function () {
-
-        // emulate the `ssb.createFeedStream` interface
-        var lt    = o(opts, 'lt')
-        var lte   = o(opts, 'lte')
-        var gt    = o(opts, 'gt')
-        var gte   = o(opts, 'gte')
-        var limit = o(opts, 'limit')
-
-        // lt, lte, gt, gte should look like:
-        // [msg.value.timestamp, msg.value.author]
-
         var added = 0
-        var done = multicb({ pluck: 1 })
         for (var i=0; i < index.rows.length; i++) {
           var row = index.rows[i]
 
@@ -275,34 +305,24 @@ exports.init = function (sbot) {
           if (invalid)
             continue
 
-          var key = (getkey) ? getkey(row) : row.key
-          if (key) {
-            var obj = { key: key }
-            for (var k in row) { // copy index attrs into obj
-              if (!obj[k]) obj[k] = row[k]
-            }
-            stream.push(obj)
+          var r = lookup(row)
+          if (r) {
+            readPush.push(r)
             added++
           }
-        }  
-        stream.end()
+        }
+        readPush.end()
       })
 
-      return pull(
-        stream,
-        paramap(function (obj, cb) {
-          sbot.ssb.get(obj.key, function (err, value) {
-            // if (err) {
-              // suppress this error
-              // the message isnt in the local cache (yet)
-              // but it got into the index, likely due to a link
-              // instead of an error, we'll put a null there to indicate the gap
-            // }
-            obj.value = value
-            cb(null, obj)
-          })
-        })
-      )
+      if (opts.live) {
+        // live stream, concat the live-emitter on the end
+        index.on('add', onadd)
+        var livePush = pushable(function () { index.removeListener('add', onadd) })
+        function onadd (row) { livePush.push(lookup(row)) }
+        var live = pull(livePush, paramap(fetch))
+        return cat([read, live])
+      }
+      return read
     }
   }
 
