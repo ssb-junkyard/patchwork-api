@@ -22,10 +22,10 @@ exports.init = function (sbot) {
   var state = {
     // indexes (lists of {key:, ts:})
     mymsgs: [],
-    home: [], // also has `.isread`
-    inbox: [], // also has `.isread`
-    votes: [], // also has `.isread`, `.vote`, and `.votemsg`
-    follows: [], // also has `.isread` and `.following`
+    home: u.index(), // also has `.isread`
+    inbox: u.index(), // also has `.isread`
+    votes: u.index(), // also has `.isread`, `.vote`, and `.votemsg`
+    follows: u.index(), // also has `.isread` and `.following`
 
     // views
     profiles: {},
@@ -90,13 +90,13 @@ exports.init = function (sbot) {
   api.getIndexCounts = function (cb) {
     awaitSync(function () {
       cb(null, {
-        inbox: state.inbox.length,
+        inbox: state.inbox.rows.length,
         inboxUnread: state.inbox.filter(function (row) { return !row.isread }).length,
         upvotes: state.votes.filter(function (row) { return row.vote > 0 }).length,
         upvotesUnread: state.votes.filter(function (row) { return row.vote > 0 && !row.isread }).length,
         follows: state.follows.filter(function (row) { return row.following }).length,
         followsUnread: state.follows.filter(function (row) { return row.following && !row.isread }).length,
-        home: state.home.length
+        home: state.home.rows.length
       })
     })
   }
@@ -121,7 +121,7 @@ exports.init = function (sbot) {
     }
 
     var index = state[indexname]
-    var row = u.find(index, key, keyname)
+    var row = index.find(key, keyname)
     if (row) {
       if (!row.isread)
         emit(indexname+'-remove')
@@ -138,7 +138,7 @@ exports.init = function (sbot) {
     }
 
     var index = state[indexname]
-    var row = u.find(index, key, keyname)
+    var row = index.find(key, keyname)
     if (row) {
       if (row.isread)
         emit(indexname+'-add')
@@ -259,8 +259,8 @@ exports.init = function (sbot) {
 
         var added = 0
         var done = multicb({ pluck: 1 })
-        for (var i=0; i < index.length; i++) {
-          var row = index[i]
+        for (var i=0; i < index.rows.length; i++) {
+          var row = index.rows[i]
 
           if (limit && added >= limit)
             break

@@ -18,13 +18,13 @@ module.exports = function (sbot, db, state, emit) {
       // home index
       if (!c.repliesTo) {
         // not a reply, put in home index
-        u.sortedUpsert(state.home, msg.value.timestamp, msg.key)
+        state.home.sortedUpsert(msg.value.timestamp, msg.key)
       } else if (mlib.link(c.repliesTo, 'msg')) {
         // a reply, put its *parent* in the home index
         state.pinc()
         u.getRootMsg(sbot, msg, function (err, rootmsg) {
           if (rootmsg)
-            u.sortedUpsert(state.home, msg.value.timestamp, rootmsg.key)
+            state.home.sortedUpsert(msg.value.timestamp, rootmsg.key)
           state.pdec()            
         })
       }
@@ -42,7 +42,7 @@ module.exports = function (sbot, db, state, emit) {
           if (inboxed) return
           // a reply to my messages?
           if (state.mymsgs.indexOf(link.msg) >= 0) {
-            var row = u.sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+            var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
             attachIsRead(row)
             emit('inbox-add')
             inboxed = true
@@ -52,7 +52,7 @@ module.exports = function (sbot, db, state, emit) {
           if (inboxed) return
           // mentions me?
           if (link.feed == sbot.feed.id) {
-            var row = u.sortedInsert(state.inbox, msg.value.timestamp, msg.key)
+            var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
             attachIsRead(row)
             emit('inbox-add')
             inboxed = true
@@ -156,7 +156,7 @@ module.exports = function (sbot, db, state, emit) {
       // follows index
       if (target.id == sbot.feed.id) {
         // use the follower's id as the key to this index, so we only have 1 entry per other user max
-        var row = u.sortedUpsert(state.follows, msg.value.timestamp, source.id)
+        var row = state.follows.sortedUpsert(msg.value.timestamp, source.id)
         row.following = c.following
         row.followmsg = msg.key
         attachIsRead(row, msg.key)
@@ -224,7 +224,7 @@ module.exports = function (sbot, db, state, emit) {
     // votes index
     // construct a composite key which will be the same for all votes by this user on the given target
     var votekey = targetkey + '::' + msg.value.author // lonnng fucking key
-    var row = u.sortedUpsert(state.votes, msg.value.timestamp, votekey)
+    var row = state.votes.sortedUpsert(msg.value.timestamp, votekey)
     row.vote = msg.value.content.vote
     row.votemsg = msg.key
     if (row.vote > 0) attachIsRead(row, msg.key)

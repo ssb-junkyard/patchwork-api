@@ -1,50 +1,62 @@
 var mlib = require('ssb-msgs')
+var EventEmitter = require('events').EventEmitter
 
-module.exports.sortedInsert = function (index, ts, key) {
-  var row = { ts: ts, key: key }
-  for (var i=0; i < index.length; i++) {
-    if (index[i].ts < ts) {
-      index.splice(i, 0, row)
-      return row
+module.exports.index = function () {
+  var index = new EventEmitter()
+  index.rows = []
+
+  index.sortedInsert = function (ts, key) {
+    var row = { ts: ts, key: key }
+    for (var i=0; i < index.rows.length; i++) {
+      if (index.rows[i].ts < ts) {
+        index.rows.splice(i, 0, row)
+        index.emit('add', row)
+        return row
+      }
+    }
+    index.rows.push(row)
+    index.emit('add', row)
+    return row
+  }
+
+  index.sortedUpsert = function (ts, key) {
+    var i = index.indexOf(key)
+    if (i !== -1) {
+      // readd to index at new TS
+      if (index.rows[i].ts < ts) {
+        index.rows.splice(i, 1)
+        return index.sortedInsert(ts, key)
+      } else
+        return index.rows[i]
+    } else {
+      // add to index
+      return index.sortedInsert(ts, key)
     }
   }
-  index.push(row)
-  return row
-}
 
-module.exports.sortedUpsert = function (index, ts, key) {
-  var i = module.exports.indexOf(index, key)
-  if (i !== -1) {
-    // readd to index at new TS
-    if (index[i].ts < ts) {
-      index.splice(i, 1)
-      return module.exports.sortedInsert(index, ts, key)
-    } else
+  index.indexOf = function (key, keyname) {
+    keyname = keyname || 'key'
+    for (var i=0; i < index.rows.length; i++) {
+      if (index.rows[i][keyname] === key)
+        return i
+    }
+    return -1
+  }
+
+  index.find = function (key, keyname) {
+    var i = index.rows.indexOf(key, keyname)
+    if (i !== -1)
       return index[i]
-  } else {
-    // add to index
-    return module.exports.sortedInsert(index, ts, key)
+    return null
   }
-}
 
-module.exports.indexOf = function (index, key, keyname) {
-  keyname = keyname || 'key'
-  for (var i=0; i < index.length; i++) {
-    if (index[i][keyname] === key)
-      return i
+  index.contains = function (key) {
+    return index.indexOf(index, key) !== -1
   }
-  return -1
-}
 
-module.exports.find = function (index, key, keyname) {
-  var i = module.exports.indexOf(index, key, keyname)
-  if (i !== -1)
-    return index[i]
-  return null
-}
+  index.filter = index.rows.filter.bind(index.rows)
 
-module.exports.contains = function (index, key) {
-  return module.exports.indexOf(index, key) !== -1
+  return index
 }
 
 
