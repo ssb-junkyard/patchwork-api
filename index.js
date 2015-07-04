@@ -2,6 +2,7 @@ var pull     = require('pull-stream')
 var multicb  = require('multicb')
 var pl       = require('pull-level')
 var pushable = require('pull-pushable')
+var paramap  = require('pull-paramap')
 var Notify   = require('pull-notify')
 var u        = require('./util')
 
@@ -273,40 +274,35 @@ exports.init = function (sbot) {
           )
           if (invalid)
             continue
-          added++
 
-          ;(function (row) {
-            var key = (getkey) ? getkey(row) : row.key
-            if (!key)
-              return
-            var msgCb = done()
-            sbot.ssb.get(key, function (err, value) {
-              // if (err) {
-                // suppress this error
-                // the message isnt in the local cache (yet)
-                // but it got into the index, likely due to a link
-                // instead of an error, we'll put a null there to indicate the gap
-              // }
-              var obj = { key: key, value: value }
-              for (var k in row) {
-                if (!obj[k])
-                  obj[k] = row[k]
-              }
-              msgCb(null, obj)
-            })
-          })(row)
-        }
-
-        done(function (err, msgs) {
-          // send all in bulk
-          // :TODO: stream, in order, as they load
-          // note, `err` should always be null due to suppression
-          for (var i = 0; i < msgs.length; i++)
-            stream.push(msgs[i])
-          stream.end()
-        })
+          var key = (getkey) ? getkey(row) : row.key
+          if (key) {
+            var obj = { key: key }
+            for (var k in row) { // copy index attrs into obj
+              if (!obj[k]) obj[k] = row[k]
+            }
+            stream.push(obj)
+            added++
+          }
+        }  
+        stream.end()
       })
-      return stream
+
+      return pull(
+        stream,
+        paramap(function (obj, cb) {
+          sbot.ssb.get(obj.key, function (err, value) {
+            // if (err) {
+              // suppress this error
+              // the message isnt in the local cache (yet)
+              // but it got into the index, likely due to a link
+              // instead of an error, we'll put a null there to indicate the gap
+            // }
+            obj.value = value
+            cb(null, obj)
+          })
+        })
+      )
     }
   }
 
