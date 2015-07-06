@@ -17,6 +17,8 @@ module.exports = {
   toggleSubscribed: 'async',
   isSubscribed: 'async',
 
+  useLookupCode: 'source',
+
   getMyProfile: 'async',
   getProfile: 'async',
   getAllProfiles: 'async',

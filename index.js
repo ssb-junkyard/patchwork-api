@@ -5,6 +5,7 @@ var pushable = require('pull-pushable')
 var paramap  = require('pull-paramap')
 var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
+var ref      = require('ssb-ref')
 var u        = require('./util')
 
 exports.name        = 'phoenix'
@@ -216,6 +217,110 @@ exports.init = function (sbot) {
     db.subscribed.get(key, function (err, v) {
       cb && cb(null, !!v)
     })
+  }
+
+  var lookupcodeRegex = /([a-z0-9\/\+\=]+\.[a-z0-9]+)(?:\[via\])?(.+)?/i
+  api.useLookupCode = function (code) {
+    var eventPush = pushable()
+
+    // parse and validate the code
+    var id, addr
+    var parts = lookupcodeRegex.exec(code)
+    var valid = true
+    if (parts) {
+      id  = parts[1]
+      addr = parts[2]
+
+      // validate id
+      if (!ref.isFeedId(id))
+        valid = false
+
+      // validate address
+      if (addr) {
+        var addr_parts = addr.split(':')
+        if (!ref.isFeedId(addr_parts[2]))
+          valid = false
+        else {
+          addr = { host: addr_parts[0], port: +addr_parts[1], key: addr_parts[2] }
+        }
+      }
+    } else
+      valid = false
+
+    if (!valid) {
+      eventPush.push({ type: 'error', message: 'Invalid lookup code' })
+      eventPush.end()
+      return eventPush
+    }
+
+    // download if we have a pub, otherwise search the peerlist first
+    if (addr) {
+      download(addr)
+    } else {
+      search(Array.prototype.slice.call(sbot.gossip.peers())) // duplicate the peers array so we can pop()
+    }
+
+    function search (peers) {
+      var peer = peers.pop()
+      if (!peer)
+        return eventPush.end()
+
+      // connect to the peer
+      eventPush.push({ type: 'connecting', addr: peer })      
+      sbot.connect(peer, function (err, rpc) {
+        if (err) {
+          eventPush.push({ type: 'error', message: 'Failed to connect', err: err })
+          return search(peers)
+        }
+        // try a sync
+        sync(rpc, function (err, seq) { 
+          if (seq > 0) {
+            eventPush.push({ type: 'finished', seq: seq })
+            eventPush.end()
+          } else
+            search(peers) // try next
+        })
+      })
+    }
+
+    var downloading = false
+    function download (addr) {
+      if (downloading) return
+      downloading = true
+
+      // connect to the pub
+      eventPush.push({ type: 'connecting', addr: addr })
+      sbot.connect(addr, function (err, rpc) {
+        if (err) {
+          eventPush.push({ type: 'error', message: 'Failed to connect', err: err })
+          eventPush.end()
+        } else {
+          // sync
+          sync(rpc, function (err, seq) { 
+            if (err) eventPush.push({ type: 'error', message: 'Error', err: err })
+            else     eventPush.push({ type: 'finished', seq: seq })
+            eventPush.end()
+          })
+        }
+      })
+    }
+
+    function sync (rpc, cb) {
+      // fetch the feed
+      var seq
+      eventPush.push({ type: 'syncing', id: id })
+      pull(
+        rpc.createHistoryStream({ id: id, keys: false }),
+        pull.through(function (msg) {
+          seq = msg.sequence
+        }),
+        sbot.ssb.createWriteStream(function (err) {
+          cb(err, seq)
+        })
+      )
+    }
+
+    return eventPush
   }
 
   api.getProfile = function (id, cb) {
