@@ -224,26 +224,25 @@ exports.init = function (sbot) {
     var eventPush = pushable()
 
     // parse and validate the code
-    var id, addr
+    var id, addrs
     var parts = lookupcodeRegex.exec(code)
     var valid = true
     if (parts) {
       id  = parts[1]
-      addr = parts[2]
+      addrs = (parts[2]) ? parts[2].split(',') : []
 
       // validate id
       if (!ref.isFeedId(id))
         valid = false
 
-      // validate address
-      if (addr) {
-        var addr_parts = addr.split(':')
-        if (!ref.isFeedId(addr_parts[2]))
-          valid = false
-        else {
-          addr = { host: addr_parts[0], port: +addr_parts[1], key: addr_parts[2] }
-        }
-      }
+      // parse addresses
+      addrs = addrs
+        .map(function (addr) {
+          addr = addr.split(':')
+          if (addr.length === 3)
+            return { host: addr[0], port: +addr[1], key: addr[2] }
+        })
+        .filter(Boolean)
     } else
       valid = false
 
@@ -253,13 +252,8 @@ exports.init = function (sbot) {
       return eventPush
     }
 
-    // download if we have a pub, otherwise search the peerlist first
-    if (addr) {
-      download(addr)
-    } else {
-      search(Array.prototype.slice.call(sbot.gossip.peers())) // duplicate the peers array so we can pop()
-    }
-
+    // begin the search!
+    search(addrs.concat(sbot.gossip.peers()))
     function search (peers) {
       var peer = peers.pop()
       if (!peer)
@@ -275,33 +269,12 @@ exports.init = function (sbot) {
         // try a sync
         sync(rpc, function (err, seq) { 
           if (seq > 0) {
+            // success!
             eventPush.push({ type: 'finished', seq: seq })
             eventPush.end()
           } else
             search(peers) // try next
         })
-      })
-    }
-
-    var downloading = false
-    function download (addr) {
-      if (downloading) return
-      downloading = true
-
-      // connect to the pub
-      eventPush.push({ type: 'connecting', addr: addr })
-      sbot.connect(addr, function (err, rpc) {
-        if (err) {
-          eventPush.push({ type: 'error', message: 'Failed to connect', err: err })
-          eventPush.end()
-        } else {
-          // sync
-          sync(rpc, function (err, seq) { 
-            if (err) eventPush.push({ type: 'error', message: 'Error', err: err })
-            else     eventPush.push({ type: 'finished', seq: seq })
-            eventPush.end()
-          })
-        }
       })
     }
 
