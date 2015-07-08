@@ -75,6 +75,16 @@ module.exports = function (sbot, db, state, emit) {
       var link = mlib.link(msg.value.content.voteTopic, 'msg')
       if (link && state.mymsgs.indexOf(link.msg) >= 0 && msg.value.author != sbot.feed.id) // vote on my msg?
         updateVoteOnMymsg(msg, link.msg)
+    },
+
+    flag: function (msg) {
+      // inbox index
+      var link = mlib.link(msg.value.content.flagTopic, 'msg')
+      if (msg.value.author !== sbot.feed.id && link && state.mymsgs.indexOf(link.msg) >= 0) {
+        var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
+        attachIsRead(row)
+        emit('inbox-add')
+      }
     }
   }
 
