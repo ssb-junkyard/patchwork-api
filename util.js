@@ -44,9 +44,9 @@ module.exports.index = function () {
   }
 
   index.find = function (key, keyname) {
-    var i = index.rows.indexOf(key, keyname)
+    var i = index.indexOf(key, keyname)
     if (i !== -1)
-      return index[i]
+      return index.rows[i]
     return null
   }
 
