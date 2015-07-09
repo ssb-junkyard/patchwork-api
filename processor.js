@@ -1,4 +1,5 @@
 var mlib = require('ssb-msgs')
+var ssbKeys = require('ssb-keys')
 var u = require('./util')
 
 module.exports = function (sbot, db, state, emit) {
@@ -23,7 +24,7 @@ module.exports = function (sbot, db, state, emit) {
         // a reply, put its *parent* in the home index
         state.pinc()
         u.getRootMsg(sbot, msg, function (err, rootmsg) {
-          if (rootmsg)
+          if (rootmsg && typeof rootmsg.value.content != 'string') // dont put encrypted roots in though
             state.home.sortedUpsert(msg.value.timestamp, rootmsg.key)
           state.pdec()            
         })
@@ -256,6 +257,19 @@ module.exports = function (sbot, db, state, emit) {
     sbot.ssb.get(logkey.value, function (err, value) {
       var msg = { key: key, value: value }
       try {
+        // encrypted? try to decrypt
+        if (typeof value.content == 'string' && value.content.slice(-4) == '.box') {
+          value.content = ssbKeys.unbox(value.content, sbot.feed.keys.private)
+          if (!value.content)
+            return
+
+          // put all decrypted messages in the inbox index
+          var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
+          attachIsRead(row)
+          if (msg.value.author != sbot.feed.id)
+            emit('inbox-add')
+        }
+
         // collect keys of user's messages
         if (msg.value.author === sbot.feed.id)
           state.mymsgs.push(msg.key)
