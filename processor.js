@@ -261,7 +261,7 @@ module.exports = function (sbot, db, state, emit) {
         if (typeof value.content == 'string' && value.content.slice(-4) == '.box') {
           value.content = ssbKeys.unbox(value.content, sbot.feed.keys.private)
           if (!value.content)
-            return
+            return state.pdec()
 
           // put all decrypted messages in the inbox index
           var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)

@@ -65,8 +65,12 @@ exports.init = function (sbot) {
   // grab for history sync
   state.pinc()
   function onPrehistorySync () {
+    console.log('Log history read...')
     // when all current items finish, consider prehistory synced (and start emitting)
-    awaitSync(function () { isPreHistorySynced = true })
+    awaitSync(function () { 
+      console.log('Indexes generated')
+      isPreHistorySynced = true
+    })
     // release
     state.pdec()
   }
