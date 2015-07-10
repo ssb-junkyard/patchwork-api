@@ -17,6 +17,8 @@ module.exports = {
   toggleSubscribed: 'async',
   isSubscribed: 'async',
 
+  addFileToBlobs: 'async',
+
   useLookupCode: 'source',
 
   getMyProfile: 'async',

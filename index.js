@@ -1,3 +1,4 @@
+var fs       = require('fs')
 var pull     = require('pull-stream')
 var multicb  = require('multicb')
 var pl       = require('pull-level')
@@ -5,6 +6,7 @@ var pushable = require('pull-pushable')
 var paramap  = require('pull-paramap')
 var cat      = require('pull-cat')
 var Notify   = require('pull-notify')
+var toPull   = require('stream-to-pull-stream')
 var ref      = require('ssb-ref')
 var u        = require('./util')
 
@@ -217,6 +219,18 @@ exports.init = function (sbot) {
     db.subscribed.get(key, function (err, v) {
       cb && cb(null, !!v)
     })
+  }
+
+  api.addFileToBlobs = function (path, cb) {
+    pull(
+      toPull.source(fs.createReadStream(path)),
+      sbot.blobs.add(function (err, hash) {
+        if (err)
+          cb(err)
+        else
+          cb(null, hash)
+      })
+    )
   }
 
   var lookupcodeRegex = /([a-z0-9\/\+\=]+\.[a-z0-9]+)(?:\[via\])?(.+)?/i
