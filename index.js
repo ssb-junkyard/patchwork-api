@@ -106,7 +106,7 @@ exports.init = function (sbot) {
     awaitSync(function () {
       cb(null, {
         inbox: state.inbox.rows.filter(isInboxFriend).length,
-        inboxUnread: state.inbox.filter(function (row) { return isInboxFriend(row) && !row.isread }).length,
+        inboxUnread: state.inbox.filter(function (row) { return isInboxFriend(row) && row.author != sbot.feed.id && !row.isread }).length,
         upvotes: state.votes.filter(function (row) { return row.vote > 0 }).length,
         upvotesUnread: state.votes.filter(function (row) { return row.vote > 0 && !row.isread }).length,
         follows: state.follows.filter(function (row) { return row.following }).length,
