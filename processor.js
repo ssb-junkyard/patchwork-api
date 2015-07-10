@@ -32,7 +32,7 @@ module.exports = function (sbot, db, state, emit) {
 
       if (!by_me) {
         // emit home-add if by a followed user and in the last hour
-        if (me.assignedTo[author] && me.assignedTo[author].following && ((Date.now() - msg.value.timestamp) < 1000*60*60))
+        if (follows(sbot.feed.id, author) && ((Date.now() - msg.value.timestamp) < 1000*60*60))
           emit('home-add')
       }
 
@@ -45,7 +45,9 @@ module.exports = function (sbot, db, state, emit) {
           if (state.mymsgs.indexOf(link.msg) >= 0) {
             var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
             attachIsRead(row)
-            emit('inbox-add')
+            row.author = msg.value.author // inbox index is filtered on read by the friends graph
+            if (follows(sbot.feed.id, row.author))
+              emit('inbox-add')
             inboxed = true
           }
         })
@@ -55,7 +57,9 @@ module.exports = function (sbot, db, state, emit) {
           if (link.feed == sbot.feed.id) {
             var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
             attachIsRead(row)
-            emit('inbox-add')
+            row.author = msg.value.author // inbox index is filtered on read by the friends graph
+            if (follows(sbot.feed.id, row.author))
+              emit('inbox-add')
             inboxed = true
           }
         })
@@ -81,10 +85,12 @@ module.exports = function (sbot, db, state, emit) {
     flag: function (msg) {
       // inbox index
       var link = mlib.link(msg.value.content.flagTopic, 'msg')
-      if (msg.value.author !== sbot.feed.id && link && state.mymsgs.indexOf(link.msg) >= 0) {
+      if (sbot.feed.id != msg.value.author && link && state.mymsgs.indexOf(link.msg) >= 0) {
         var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
         attachIsRead(row)
-        emit('inbox-add')
+        row.author = msg.value.author // inbox index is filtered on read by the friends graph
+        if (follows(sbot.feed.id, msg.value.author))
+          emit('inbox-add')
       }
     }
   }
@@ -249,6 +255,11 @@ module.exports = function (sbot, db, state, emit) {
     })
   }
 
+  function follows (a, b) {
+    var aT = getProfile(a).assignedTo[b]
+    return (a != b && aT && aT.following)
+  }
+
   // exported api
 
   function fn (logkey) {
@@ -266,7 +277,8 @@ module.exports = function (sbot, db, state, emit) {
           // put all decrypted messages in the inbox index
           var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
           attachIsRead(row)
-          if (msg.value.author != sbot.feed.id)
+          row.author = msg.value.author // inbox index is filtered on read by the friends graph
+          if (follows(sbot.feed.id, msg.value.author))
             emit('inbox-add')
         }
 

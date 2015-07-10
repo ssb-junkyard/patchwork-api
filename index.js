@@ -27,7 +27,7 @@ exports.init = function (sbot) {
     // indexes (lists of {key:, ts:})
     mymsgs: [],
     home: u.index(), // also has `.isread`
-    inbox: u.index(), // also has `.isread`
+    inbox: u.index(), // also has `.isread` and `.author`
     votes: u.index(), // also has `.isread`, `.vote`, and `.votemsg`
     follows: u.index(), // also has `.isread` and `.following`
 
@@ -96,10 +96,17 @@ exports.init = function (sbot) {
   }
 
   api.getIndexCounts = function (cb) {
+    function isInboxFriend (row) {
+      if (row.author == sbot.feed.id) return true
+      var p = state.profiles[sbot.feed.id]
+      if (!p) return false
+      return p.assignedTo[row.author] && p.assignedTo[row.author].following
+    }
+
     awaitSync(function () {
       cb(null, {
-        inbox: state.inbox.rows.length,
-        inboxUnread: state.inbox.filter(function (row) { return !row.isread }).length,
+        inbox: state.inbox.rows.filter(isInboxFriend).length,
+        inboxUnread: state.inbox.filter(function (row) { return isInboxFriend(row) && !row.isread }).length,
         upvotes: state.votes.filter(function (row) { return row.vote > 0 }).length,
         upvotesUnread: state.votes.filter(function (row) { return row.vote > 0 && !row.isread }).length,
         follows: state.follows.filter(function (row) { return row.following }).length,
