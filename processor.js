@@ -5,11 +5,6 @@ var u = require('./util')
 module.exports = function (sbot, db, state, emit) {
 
   var processors = {
-    init: function (msg) {
-      var profile = getProfile(msg.value.author)
-      profile.createdAt = msg.value.timestamp      
-    },
-
     post: function (msg) {
       var me = getProfile(sbot.feed.id)
       var author = msg.value.author
@@ -103,7 +98,6 @@ module.exports = function (sbot, db, state, emit) {
     if (!profile) {
       state.profiles[pid] = profile = {
         id: pid,
-        createdAt: null,
 
         // current values...
         self: { name: null, profilePic: null }, // ...set by self about self
