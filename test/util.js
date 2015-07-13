@@ -27,11 +27,12 @@ exports.makeusers = function (sbot, desc, cb) {
     console.log(name+':', users[name].id)
   }
 
-  // generate follows
+  // generate additional messages
   for (var name in desc) {  
     ;(desc[name].follows||[]).forEach(function (name2) {
       users[name].add({ type: 'contact', contact: { feed: users[name2].id }, following: true }, done())
     })
+    users[name].add({ type: 'contact', contact: { feed: users[name].id }, name: name }, done())
   }
 
   done(function (err, msgs) {

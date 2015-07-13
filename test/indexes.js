@@ -282,7 +282,7 @@ tape('follow index counts correctly track read/unread', function (t) {
     charlie: { follows: ['alice'] }
   }, function (err, users, msgs) {
     if (err) throw err
-    var followMsg = msgs[0][1]
+    var followMsg = msgs[1][1]
 
     sbot.phoenix.getIndexCounts(function (err, counts) {
       if (err) throw err
