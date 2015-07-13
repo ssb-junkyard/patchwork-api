@@ -95,14 +95,14 @@ exports.init = function (sbot) {
     })
   }
 
-  api.getIndexCounts = function (cb) {
-    function isInboxFriend (row) {
-      if (row.author == sbot.feed.id) return true
-      var p = state.profiles[sbot.feed.id]
-      if (!p) return false
-      return p.assignedTo[row.author] && p.assignedTo[row.author].following
-    }
+  function isInboxFriend (row) {
+    if (row.author == sbot.feed.id) return true
+    var p = state.profiles[sbot.feed.id]
+    if (!p) return false
+    return p.assignedTo[row.author] && p.assignedTo[row.author].following
+  }
 
+  api.getIndexCounts = function (cb) {
     awaitSync(function () {
       cb(null, {
         inbox: state.inbox.rows.filter(isInboxFriend).length,
@@ -116,7 +116,10 @@ exports.init = function (sbot) {
     })
   }
 
-  api.createInboxStream = indexStreamFn(state.inbox)
+  api.createInboxStream = indexStreamFn(state.inbox, function (row) { 
+    if (!isInboxFriend(row)) return false
+    return row.key
+  })
   api.createVoteStream = indexStreamFn(state.votes, function (row) { 
     if (row.vote <= 0) return false
     return row.votemsg
@@ -417,7 +420,7 @@ exports.init = function (sbot) {
         readPush.end()
       })
 
-      if (opts.live) {
+      if (opts && opts.live) {
         // live stream, concat the live-emitter on the end
         index.on('add', onadd)
         var livePush = pushable(function () { index.removeListener('add', onadd) })
