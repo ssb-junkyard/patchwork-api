@@ -26,8 +26,7 @@
   "devDependencies": {
     "osenv": "~0.1.0",
     "rimraf": "~2.2.8",
-    "scuttlebot": "~3.0.0",
-    "ssb-msg-schemas": "~3.2.0",
+    "scuttlebot": "latest",
     "tape": "~3.0.0"
   },
   "author": "Paul Frazee <pfrazee@gmail.com>",
