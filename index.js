@@ -77,10 +77,19 @@ exports.init = function (sbot) {
 
   // events stream
   var notify = Notify()
-  function emit (type) {
+  function emit (type, data) {
     if (!isPreHistorySynced)
       return
-    notify({ type: type })
+    var e = data || {}
+    e.type = type
+    if (e.type == 'index-change') {
+      api.getIndexCounts(function (err, counts) {
+        e.total = counts[e.index]
+        e.unread = counts[e.index+'Unread']
+        notify(e)
+      })
+    } else
+      notify(e)
   }
 
   // getters
@@ -107,8 +116,8 @@ exports.init = function (sbot) {
       cb(null, {
         inbox: state.inbox.rows.filter(isInboxFriend).length,
         inboxUnread: state.inbox.filter(function (row) { return isInboxFriend(row) && row.author != sbot.feed.id && !row.isread }).length,
-        upvotes: state.votes.filter(function (row) { return row.vote > 0 }).length,
-        upvotesUnread: state.votes.filter(function (row) { return row.vote > 0 && !row.isread }).length,
+        votes: state.votes.filter(function (row) { return row.vote > 0 }).length,
+        votesUnread: state.votes.filter(function (row) { return row.vote > 0 && !row.isread }).length,
         follows: state.follows.filter(function (row) { return row.following }).length,
         followsUnread: state.follows.filter(function (row) { return row.following && !row.isread }).length,
         home: state.home.rows.length
@@ -141,9 +150,10 @@ exports.init = function (sbot) {
     var index = state[indexname]
     var row = index.find(key, keyname)
     if (row) {
-      if (!row.isread)
-        emit(indexname+'-remove')
+      var wasread = row.isread
       row.isread = true
+      if (!wasread)
+        emit('index-change', { index: indexname })
     }
   }
 
@@ -158,9 +168,10 @@ exports.init = function (sbot) {
     var index = state[indexname]
     var row = index.find(key, keyname)
     if (row) {
-      if (row.isread)
-        emit(indexname+'-add')
+      var wasread = row.isread
       row.isread = false
+      if (wasread)
+        emit('index-change', { index: indexname })
     }
   }
 

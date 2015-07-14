@@ -42,7 +42,7 @@ module.exports = function (sbot, db, state, emit) {
             attachIsRead(row)
             row.author = msg.value.author // inbox index is filtered on read by the friends graph
             if (follows(sbot.feed.id, row.author))
-              emit('inbox-add')
+              emit('index-change', { index: 'inbox' })
             inboxed = true
           }
         })
@@ -54,7 +54,7 @@ module.exports = function (sbot, db, state, emit) {
             attachIsRead(row)
             row.author = msg.value.author // inbox index is filtered on read by the friends graph
             if (follows(sbot.feed.id, row.author))
-              emit('inbox-add')
+              emit('index-change', { index: 'inbox' })
             inboxed = true
           }
         })
@@ -85,7 +85,7 @@ module.exports = function (sbot, db, state, emit) {
         attachIsRead(row)
         row.author = msg.value.author // inbox index is filtered on read by the friends graph
         if (follows(sbot.feed.id, msg.value.author))
-          emit('inbox-add')
+          emit('index-change', { index: 'inbox' })
       }
     }
   }
@@ -273,7 +273,7 @@ module.exports = function (sbot, db, state, emit) {
           attachIsRead(row)
           row.author = msg.value.author // inbox index is filtered on read by the friends graph
           if (follows(sbot.feed.id, msg.value.author))
-            emit('inbox-add')
+            emit('index-change', { index: 'inbox' })
         }
 
         // collect keys of user's messages
