@@ -20,7 +20,7 @@ module.exports = function (sbot, db, state, emit) {
         state.pinc()
         u.getRootMsg(sbot, msg, function (err, rootmsg) {
           if (rootmsg && typeof rootmsg.value.content != 'string') // dont put encrypted roots in though
-            state.home.sortedUpsert(msg.value.timestamp, rootmsg.key)
+            state.home.sortedUpsert(rootmsg.value.timestamp, rootmsg.key)
           state.pdec()            
         })
       }
