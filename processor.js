@@ -167,9 +167,8 @@ module.exports = function (sbot, db, state, emit) {
       // follows index
       if (target.id == sbot.feed.id) {
         // use the follower's id as the key to this index, so we only have 1 entry per other user max
-        var row = state.follows.sortedUpsert(msg.value.timestamp, source.id)
+        var row = state.follows.sortedUpsert(msg.value.timestamp, msg.key)
         row.following = c.following
-        row.followmsg = msg.key
         attachIsRead(row, msg.key)
       }
     }

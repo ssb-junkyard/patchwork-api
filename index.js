@@ -133,10 +133,7 @@ exports.init = function (sbot) {
     if (row.vote <= 0) return false
     return row.votemsg
   })
-  api.createFollowStream = indexStreamFn(state.follows, function (row) { 
-    if (!row.following) return false
-    return row.followmsg
-  })
+  api.createFollowStream = indexStreamFn(state.follows)
   api.createHomeStream = indexStreamFn(state.home)
 
   function indexMarkRead (indexname, key, keyname) {
@@ -178,7 +175,7 @@ exports.init = function (sbot) {
   api.markRead = function (key, cb) {
     indexMarkRead('inbox', key)
     indexMarkRead('votes', key, 'votemsg')
-    indexMarkRead('follows', key, 'followmsg')
+    indexMarkRead('follows', key)
     if (Array.isArray(key))
       db.isread.batch(key.map(function (k) { return { type: 'put', key: k, value: 1 }}), cb)
     else
@@ -187,7 +184,7 @@ exports.init = function (sbot) {
   api.markUnread = function (key, cb) {
     indexMarkUnread('inbox', key)
     indexMarkUnread('votes', key, 'votemsg')
-    indexMarkUnread('follows', key, 'followmsg')
+    indexMarkUnread('follows', key)
     if (Array.isArray(key))
       db.isread.batch(key.map(function (k) { return { type: 'del', key: k }}), cb)
     else

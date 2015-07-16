@@ -208,24 +208,24 @@ tape('vote index counts correctly track read/unread', function (t) {
 
         sbot.phoenix.getIndexCounts(function (err, counts) {
           if (err) throw err
-          t.equal(counts.upvotes, 2)
-          t.equal(counts.upvotesUnread, 2)
+          t.equal(counts.votes, 2)
+          t.equal(counts.votesUnread, 2)
 
           sbot.phoenix.markRead(voteMsg.key, function (err) {
             if (err) throw err
 
             sbot.phoenix.getIndexCounts(function (err, counts) {
               if (err) throw err
-              t.equal(counts.upvotes, 2)
-              t.equal(counts.upvotesUnread, 1)
+              t.equal(counts.votes, 2)
+              t.equal(counts.votesUnread, 1)
 
               sbot.phoenix.markUnread(voteMsg.key, function (err) {
                 if (err) throw err
 
                 sbot.phoenix.getIndexCounts(function (err, counts) {
                   if (err) throw err
-                  t.equal(counts.upvotes, 2)
-                  t.equal(counts.upvotesUnread, 2)
+                  t.equal(counts.votes, 2)
+                  t.equal(counts.votesUnread, 2)
                   t.end()
                 })
               })
@@ -254,7 +254,7 @@ tape('follow index includes all new followers', function (t) {
   })
 })
 
-tape('follow index does not includes unfollows, and removes unfollowed follows', function (t) {
+tape('follow index includes unfollows', function (t) {
   var sbot = u.newserver()
   u.makeusers(sbot, {
     alice: {},
@@ -267,7 +267,7 @@ tape('follow index does not includes unfollows, and removes unfollowed follows',
       if (err) throw err
       pull(sbot.phoenix.createFollowStream(), pull.collect(function (err, msgs) {
         if (err) throw err
-        t.equal(msgs.length, 1)
+        t.equal(msgs.length, 3)
         t.end()
       }))
     })
