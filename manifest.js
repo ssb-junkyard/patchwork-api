@@ -18,6 +18,7 @@ module.exports = {
   isSubscribed: 'async',
 
   addFileToBlobs: 'async',
+  saveBlobToFile: 'async',
 
   useLookupCode: 'source',
 

@@ -254,6 +254,12 @@ exports.init = function (sbot) {
       })
     )
   }
+  api.saveBlobToFile = function (hash, path, cb) {
+    pull(
+      sbot.blobs.get(hash),
+      toPull.sink(fs.createWriteStream(path), cb)
+    )
+  }
 
   var lookupcodeRegex = /([a-z0-9\/\+\=]+\.[a-z0-9]+)(?:\[via\])?(.+)?/i
   api.useLookupCode = function (code) {
