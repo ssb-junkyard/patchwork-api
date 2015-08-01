@@ -1,14 +1,16 @@
-# Phoenix API v5
+# Patchwork API
 
-The backend logic for Phoenix, accessed through the scuttlebot RPC interface. Adds its functions
+[Patchwork's](/patchwork) rpc api module
+
+**the api docs below are outdated, will update soon**
 
 ```js
-var phoenixAPI = require('phoenix-api')
+var patchworkAPI = require('ssb-patchwork-api')
 
-phoenixAPI.manifest    // rpc manifest
-phoenixAPI.permissions // rpc permissions
+patchworkAPI.manifest    // rpc manifest
+patchworkAPI.permissions // rpc permissions
 
-var api = phoenixAPI.init(sbot) // create plugin api instance
+var api = patchworkAPI.init(sbot) // create plugin api instance
 
 pull(api.createEventStream(), pull.drain(function (event))) // event emitting stream
 // emits { type: 'mesage', msg: Object }       for each new message
