@@ -1,7 +1,7 @@
 {
-  "name": "phoenix-api",
-  "version": "8.4.0",
-  "description": "scuttlebot rpc methods for accessing the log from the phoenix gui",
+  "name": "ssb-patchwork-api",
+  "version": "0.0.1",
+  "description": "patchwork's rpc api module",
   "main": "index.js",
   "scripts": {
     "test": "set -e; for t in test/*.js; do node $t; done"
