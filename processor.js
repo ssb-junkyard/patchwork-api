@@ -11,8 +11,8 @@ module.exports = function (sbot, db, state, emit) {
       var c = msg.value.content
       
       // home index
-      if (!c.repliesTo) {
-        // not a reply, put in home index
+      if (!c.repliesTo && !c.recps) {
+        // not a reply or a targeted message, put in home index
         state.home.sortedUpsert(msg.value.timestamp, msg.key)
       } else if (mlib.link(c.repliesTo, 'msg')) {
         // a reply, put its *parent* in the home index
