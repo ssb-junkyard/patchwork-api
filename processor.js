@@ -264,7 +264,7 @@ module.exports = function (sbot, db, state, emit) {
       try {
         // encrypted? try to decrypt
         if (typeof value.content == 'string' && value.content.slice(-4) == '.box') {
-          value.content = sbot.crypto.unbox(value.content)
+          value.content = sbot.private.unbox(value.content)
           if (!value.content)
             return state.pdec()
 
