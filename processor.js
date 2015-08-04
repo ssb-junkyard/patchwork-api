@@ -69,22 +69,46 @@ module.exports = function (sbot, db, state, emit) {
       })
     },
 
+    about: function (msg) {
+      // update profiles
+      mlib.links(msg.value.content.about, 'feed').forEach(function (link) {
+        var toself = link.link === msg.value.author
+        if (toself) updateSelfContact(msg.value.author, msg)
+        else        updateOtherContact(msg.value.author, link.link, msg)
+      })
+    },
+
     vote: function (msg) {
       // update tallies
-      var link = mlib.link(msg.value.content.voteTopic, 'msg')
+      var link = mlib.link(msg.value.content.vote, 'msg')
       if (link && state.mymsgs.indexOf(link.link) >= 0 && msg.value.author != sbot.id) // vote on my msg?
-        updateVoteOnMymsg(msg, link.link)
+        updateVoteOnMymsg(msg, link)
     },
 
     flag: function (msg) {
       // inbox index
-      var link = mlib.link(msg.value.content.flagTopic, 'msg')
+      var link = mlib.link(msg.value.content.flag, 'msg')
       if (sbot.id != msg.value.author && link && state.mymsgs.indexOf(link.link) >= 0) {
         var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
         attachIsRead(row)
         row.author = msg.value.author // inbox index is filtered on read by the friends graph
         if (follows(sbot.id, msg.value.author))
           emit('index-change', { index: 'inbox' })
+      }
+
+      // user flags
+      var link = mlib.link(msg.value.content.flag, 'feed')
+      if (link) {
+        var source = getProfile(msg.value.author)
+        var target = getProfile(link.link)
+
+        var flag = link.reason ? { key: msg.key, reason: link.reason } : false
+        source.assignedTo[target.id].flagged = flag
+        target.assignedBy[source.id].flagged = flag
+
+        // track if by local user
+        if (source.id === sbot.id)
+          target.flagged = flag
       }
     }
   }
@@ -99,7 +123,7 @@ module.exports = function (sbot, db, state, emit) {
         id: pid,
 
         // current values...
-        self: { name: null, profilePic: null }, // ...set by self about self
+        self: { name: null, image: null }, // ...set by self about self
         assignedBy: {}, // ...set by others about self
         assignedTo: {}, // ...set by self about others
 
@@ -120,12 +144,12 @@ module.exports = function (sbot, db, state, emit) {
       rebuildNamesFor(author)
     }
 
-    // profilePic: link to image
-    if ('profilePic' in c) {
-      if (mlib.link(c.profilePic, 'blob'))
-        author.self.profilePic = mlib.link(c.profilePic)
-      else if (!c.profilePic)
-        delete author.self.profilePic
+    // image: link to image
+    if ('image' in c) {
+      if (mlib.link(c.image, 'blob'))
+        author.self.image = mlib.link(c.image)
+      else if (!c.image)
+        delete author.self.image
     }
   }
 
@@ -136,16 +160,6 @@ module.exports = function (sbot, db, state, emit) {
     source.assignedTo[target.id] = source.assignedTo[target.id] || {}
     target.assignedBy[source.id] = target.assignedBy[source.id] || {}
     var userProf = getProfile(sbot.id)
-
-    // flagged: false, true, or an object with {reason: string}
-    if ('flagged' in c) { 
-      source.assignedTo[target.id].flagged = c.flagged
-      target.assignedBy[source.id].flagged = c.flagged
-
-      // track if by local user
-      if (source.id === sbot.id)
-        target.flagged = c.flagged
-    }
 
     // name: a non-empty string
     if (nonEmptyStr(c.name)) {
@@ -170,6 +184,12 @@ module.exports = function (sbot, db, state, emit) {
         row.following = c.following
         attachIsRead(row, msg.key)
       }
+    }
+
+    // blocking: bool
+    if (typeof c.blocking === 'boolean') {
+      source.assignedTo[target.id].blocking = c.blocking
+      target.assignedBy[source.id].blocking = c.blocking
     }
   }
 
@@ -229,12 +249,12 @@ module.exports = function (sbot, db, state, emit) {
     }
   }
 
-  function updateVoteOnMymsg (msg, targetkey) {
+  function updateVoteOnMymsg (msg, l) {
     // votes index
     // construct a composite key which will be the same for all votes by this user on the given target
-    var votekey = targetkey + '::' + msg.value.author // lonnng fucking key
+    var votekey = l.link + '::' + msg.value.author // lonnng fucking key
     var row = state.votes.sortedUpsert(msg.value.timestamp, votekey)
-    row.vote = msg.value.content.vote
+    row.vote = l.value
     row.votemsg = msg.key
     if (row.vote > 0) attachIsRead(row, msg.key)
     else              row.isread = true // we dont care about non-upvotes

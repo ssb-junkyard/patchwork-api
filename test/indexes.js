@@ -147,8 +147,8 @@ tape('vote index includes upvotes on the users posts', function (t) {
       if (err) throw err
 
       var done = multicb()
-      users.bob.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
-      users.charlie.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
+      users.bob.add({ type: 'vote', vote: { link: msg.key, value: 1 } }, done())
+      users.charlie.add({ type: 'vote', vote: { link: msg.key, value: 1 } }, done())
       done(function (err) {
         if (err) throw err
 
@@ -176,9 +176,9 @@ tape('vote index does not include downvotes, and removes unvotes', function (t) 
       if (err) throw err
 
       var done = multicb()
-      users.bob.add({ type: 'vote', voteTopic: msg.key, vote: -1 }, done())
-      users.charlie.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
-      users.charlie.add({ type: 'vote', voteTopic: msg.key, vote: 0 }, done())
+      users.bob.add({ type: 'vote', vote: { link: msg.key, value: -1 } }, done())
+      users.charlie.add({ type: 'vote', vote: { link: msg.key, value: 1 } }, done())
+      users.charlie.add({ type: 'vote', vote: { link: msg.key, value: 0 } }, done())
       done(function (err) {
         if (err) throw err
 
@@ -206,8 +206,8 @@ tape('vote index counts correctly track read/unread', function (t) {
       if (err) throw err
 
       var done = multicb()
-      users.bob.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
-      users.charlie.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
+      users.bob.add({ type: 'vote', vote: { link: msg.key, value: 1 } }, done())
+      users.charlie.add({ type: 'vote', vote: { link: msg.key, value: 1 } }, done())
       done(function (err, msgs) {
         if (err) throw err
         var voteMsg = msgs[0][1]

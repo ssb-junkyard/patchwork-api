@@ -39,8 +39,8 @@ tape('the local users name assignments take precedence', function (t) {
     if (err) throw err
 
     var done = multicb()
-    users.alice.add({ type: 'contact', contact: users.bob.id, name: 'robert' }, done())
-    users.alice.add({ type: 'contact', contact: users.charlie.id, name: 'chuck' }, done())
+    users.alice.add({ type: 'about', about: users.bob.id, name: 'robert' }, done())
+    users.alice.add({ type: 'about', about: users.charlie.id, name: 'chuck' }, done())
     done(function (err) {
       if (err) throw err
 
@@ -72,7 +72,7 @@ tape('conflicting names between followeds are tracked as action items', function
   }, function (err, users) {
     if (err) throw err
 
-    users.charlie.add({ type: 'contact', contact: users.charlie.id, name: 'bob' }, function (err) {
+    users.charlie.add({ type: 'about', about: users.charlie.id, name: 'bob' }, function (err) {
       if (err) throw err
 
       sbot.patchwork.getNamesById(function (err, names) {
@@ -109,7 +109,7 @@ tape('conflicting names are resolved by unfollowing', function (t) {
   }, function (err, users) {
     if (err) throw err
 
-    users.charlie.add({ type: 'contact', contact: users.charlie.id, name: 'bob' }, function (err) {
+    users.charlie.add({ type: 'about', about: users.charlie.id, name: 'bob' }, function (err) {
       if (err) throw err
 
       users.alice.add({ type: 'contact', contact: users.bob.id, following: false }, function (err) {
@@ -148,10 +148,10 @@ tape('conflicting names are resolved by one of the users self-assigning a new na
   }, function (err, users) {
     if (err) throw err
 
-    users.charlie.add({ type: 'contact', contact: users.charlie.id, name: 'bob' }, function (err) {
+    users.charlie.add({ type: 'about', about: users.charlie.id, name: 'bob' }, function (err) {
       if (err) throw err
 
-      users.bob.add({ type: 'contact', contact: users.bob.id, name: 'robert' }, function (err) {
+      users.bob.add({ type: 'about', about: users.bob.id, name: 'robert' }, function (err) {
         if (err) throw err
 
         sbot.patchwork.getNamesById(function (err, names) {
@@ -188,10 +188,10 @@ tape('conflicting names are resolved by the local user assigning a new name', fu
   }, function (err, users) {
     if (err) throw err
 
-    users.charlie.add({ type: 'contact', contact: users.charlie.id, name: 'bob' }, function (err) {
+    users.charlie.add({ type: 'about', about: users.charlie.id, name: 'bob' }, function (err) {
       if (err) throw err
 
-      users.alice.add({ type: 'contact', contact: users.bob.id, name: 'robert' }, function (err) {
+      users.alice.add({ type: 'about', about: users.bob.id, name: 'robert' }, function (err) {
         if (err) throw err
 
         sbot.patchwork.getNamesById(function (err, names) {

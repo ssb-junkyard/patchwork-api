@@ -14,9 +14,9 @@ tape('profiles track self-assigned name and profile pic', function (t) {
     if (err) throw err
 
     var done = multicb()
-    users.alice.add({ type: 'contact', contact: users.alice.id, profilePic: blobid }, done())
-    users.bob.add({ type: 'contact', contact: users.bob.id, profilePic: blobid }, done())
-    users.charlie.add({ type: 'contact', contact: users.charlie.id, profilePic: blobid }, done())
+    users.alice.add({ type: 'about', about: users.alice.id, image: blobid }, done())
+    users.bob.add({ type: 'about', about: users.bob.id, image: blobid }, done())
+    users.charlie.add({ type: 'about', about: users.charlie.id, image: blobid }, done())
     done(function (err) {
       if (err) throw err
 
@@ -25,9 +25,9 @@ tape('profiles track self-assigned name and profile pic', function (t) {
         t.equal(profiles[users.alice.id].self.name, 'alice')
         t.equal(profiles[users.bob.id].self.name, 'bob')
         t.equal(profiles[users.charlie.id].self.name, 'charlie')
-        t.equal(profiles[users.alice.id].self.profilePic.link, blobid)
-        t.equal(profiles[users.bob.id].self.profilePic.link, blobid)
-        t.equal(profiles[users.charlie.id].self.profilePic.link, blobid)
+        t.equal(profiles[users.alice.id].self.image.link, blobid)
+        t.equal(profiles[users.bob.id].self.image.link, blobid)
+        t.equal(profiles[users.charlie.id].self.image.link, blobid)
         sbot.close()
         t.end()
       })
@@ -45,9 +45,9 @@ tape('profiles track follows, names, and flags between users', function (t) {
     if (err) throw err
 
     var done = multicb()
-    users.alice.add({ type: 'contact', contact: users.bob.id, name: 'robert' }, done())
-    users.alice.add({ type: 'contact', contact: users.charlie.id, flagged: { reason: 'such a jerk!' } }, done())
-    users.bob.add({ type: 'contact', contact: users.charlie.id, flagged: { reason: 'dont like him' } }, done())
+    users.alice.add({ type: 'about', about: users.bob.id, name: 'robert' }, done())
+    users.alice.add({ type: 'flag', flag: { link: users.charlie.id, reason: 'such a jerk!' } }, done())
+    users.bob.add({ type: 'flag', flag: { link: users.charlie.id, reason: 'dont like him' } }, done())
     done(function (err) {
       if (err) throw err
 
