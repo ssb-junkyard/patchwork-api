@@ -24,8 +24,14 @@ module.exports.index = function () {
     if (i !== -1) {
       // readd to index at new TS
       if (index.rows[i].ts < ts) {
+        var oldrow = index.rows[i]
         index.rows.splice(i, 1)
-        return index.sortedInsert(ts, key)
+        var newrow = index.sortedInsert(ts, key)
+        for (var k in oldrow) {
+          if (k != 'ts')
+            newrow[k] = oldrow[k]
+        }
+        return newrow
       } else
         return index.rows[i]
     } else {
@@ -61,10 +67,10 @@ module.exports.index = function () {
 
 
 module.exports.getRootMsg = function (sbot, msg, cb) {
-  var mid = mlib.link(msg.value.content.thread || msg.value.content.repliesTo, 'msg').msg
+  var mid = mlib.link(msg.value.content.thread || msg.value.content.repliesTo, 'msg').link
   up()
   function up () {
-    sbot.ssb.get(mid, function (err, msgvalue) {
+    sbot.get(mid, function (err, msgvalue) {
       if (err)
         return cb(err)
 
@@ -75,7 +81,7 @@ module.exports.getRootMsg = function (sbot, msg, cb) {
       // ascend
       var link = mlib.link(msgvalue.content.thread || msgvalue.content.repliesTo, 'msg')
       if (link) {
-        mid = link.msg
+        mid = link.link
         return up()
       }
 

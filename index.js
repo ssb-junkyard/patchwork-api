@@ -10,7 +10,7 @@ var toPull   = require('stream-to-pull-stream')
 var ref      = require('ssb-ref')
 var u        = require('./util')
 
-exports.name        = 'phoenix'
+exports.name        = 'patchwork'
 exports.version     = '1.0.0'
 exports.manifest    = require('./manifest')
 exports.permissions = require('./permissions')
@@ -18,7 +18,7 @@ exports.permissions = require('./permissions')
 exports.init = function (sbot) {
 
   var api = {}
-  var phoenixdb = sbot.ssb.sublevel('phoenix')
+  var phoenixdb = sbot.sublevel('patchwork')
   var db = {
     isread: phoenixdb.sublevel('isread'),
     subscribed: phoenixdb.sublevel('subscribed')
@@ -39,7 +39,7 @@ exports.init = function (sbot) {
   }
 
   var processor = require('./processor')(sbot, db, state, emit)
-  pull(pl.read(sbot.ssb.sublevel('log'), { live: true, onSync: onPrehistorySync }), pull.drain(processor))
+  pull(pl.read(sbot.sublevel('log'), { live: true, onSync: onPrehistorySync }), pull.drain(processor))
 
   // track sync state
   // - processor does async processing for each message that comes in
@@ -100,13 +100,13 @@ exports.init = function (sbot) {
 
   api.getMyProfile = function (cb) {
     awaitSync(function () {
-      api.getProfile(sbot.feed.id, cb)
+      api.getProfile(sbot.id, cb)
     })
   }
 
   function isInboxFriend (row) {
-    if (row.author == sbot.feed.id) return true
-    var p = state.profiles[sbot.feed.id]
+    if (row.author == sbot.id) return true
+    var p = state.profiles[sbot.id]
     if (!p) return false
     return p.assignedTo[row.author] && p.assignedTo[row.author].following
   }
@@ -115,7 +115,7 @@ exports.init = function (sbot) {
     awaitSync(function () {
       cb(null, {
         inbox: state.inbox.rows.filter(isInboxFriend).length,
-        inboxUnread: state.inbox.filter(function (row) { return isInboxFriend(row) && row.author != sbot.feed.id && !row.isread }).length,
+        inboxUnread: state.inbox.filter(function (row) { return isInboxFriend(row) && row.author != sbot.id && !row.isread }).length,
         votes: state.votes.filter(function (row) { return row.vote > 0 }).length,
         votesUnread: state.votes.filter(function (row) { return row.vote > 0 && !row.isread }).length,
         follows: state.follows.filter(function (row) { return row.following }).length,
@@ -329,7 +329,7 @@ exports.init = function (sbot) {
         pull.through(function (msg) {
           seq = msg.sequence
         }),
-        sbot.ssb.createWriteStream(function (err) {
+        sbot.createWriteStream(function (err) {
           cb(err, seq)
         })
       )
@@ -390,7 +390,7 @@ exports.init = function (sbot) {
 
       // helper to fetch rows
       function fetch (row, cb) {
-        sbot.ssb.get(row.key, function (err, value) {
+        sbot.get(row.key, function (err, value) {
           // if (err) {
             // suppress this error
             // the message isnt in the local cache (yet)

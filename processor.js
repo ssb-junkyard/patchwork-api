@@ -1,14 +1,13 @@
 var mlib = require('ssb-msgs')
-var ssbKeys = require('ssb-keys')
 var u = require('./util')
 
 module.exports = function (sbot, db, state, emit) {
 
   var processors = {
     post: function (msg) {
-      var me = getProfile(sbot.feed.id)
+      var me = getProfile(sbot.id)
       var author = msg.value.author
-      var by_me = (author === sbot.feed.id)
+      var by_me = (author === sbot.id)
       var c = msg.value.content
       
       // home index
@@ -19,7 +18,7 @@ module.exports = function (sbot, db, state, emit) {
         // a reply, put its *parent* in the home index
         state.pinc()
         u.getRootMsg(sbot, msg, function (err, rootmsg) {
-          if (rootmsg && typeof rootmsg.value.content != 'string') // dont put encrypted roots in though
+          if (rootmsg && typeof rootmsg.value.content != 'string') // dont put encrypted msgs in homestream
             state.home.sortedUpsert(rootmsg.value.timestamp, rootmsg.key)
           state.pdec()            
         })
@@ -27,7 +26,7 @@ module.exports = function (sbot, db, state, emit) {
 
       if (!by_me) {
         // emit home-add if by a followed user and in the last hour
-        if (follows(sbot.feed.id, author) && ((Date.now() - msg.value.timestamp) < 1000*60*60))
+        if (follows(sbot.id, author) && ((Date.now() - msg.value.timestamp) < 1000*60*60))
           emit('home-add')
       }
 
@@ -37,11 +36,11 @@ module.exports = function (sbot, db, state, emit) {
         mlib.links(c.repliesTo, 'msg').forEach(function (link) {
           if (inboxed) return
           // a reply to my messages?
-          if (state.mymsgs.indexOf(link.msg) >= 0) {
+          if (state.mymsgs.indexOf(link.link) >= 0) {
             var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
             attachIsRead(row)
             row.author = msg.value.author // inbox index is filtered on read by the friends graph
-            if (follows(sbot.feed.id, row.author))
+            if (follows(sbot.id, row.author))
               emit('index-change', { index: 'inbox' })
             inboxed = true
           }
@@ -49,11 +48,11 @@ module.exports = function (sbot, db, state, emit) {
         mlib.links(c.mentions, 'feed').forEach(function (link) {
           if (inboxed) return
           // mentions me?
-          if (link.feed == sbot.feed.id) {
+          if (link.link == sbot.id) {
             var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
             attachIsRead(row)
             row.author = msg.value.author // inbox index is filtered on read by the friends graph
-            if (follows(sbot.feed.id, row.author))
+            if (follows(sbot.id, row.author))
               emit('index-change', { index: 'inbox' })
             inboxed = true
           }
@@ -64,27 +63,27 @@ module.exports = function (sbot, db, state, emit) {
     contact: function (msg) {
       // update profiles
       mlib.links(msg.value.content.contact, 'feed').forEach(function (link) {
-        var toself = link.feed === msg.value.author
+        var toself = link.link === msg.value.author
         if (toself) updateSelfContact(msg.value.author, msg)
-        else        updateOtherContact(msg.value.author, link.feed, msg)
+        else        updateOtherContact(msg.value.author, link.link, msg)
       })
     },
 
     vote: function (msg) {
       // update tallies
       var link = mlib.link(msg.value.content.voteTopic, 'msg')
-      if (link && state.mymsgs.indexOf(link.msg) >= 0 && msg.value.author != sbot.feed.id) // vote on my msg?
-        updateVoteOnMymsg(msg, link.msg)
+      if (link && state.mymsgs.indexOf(link.link) >= 0 && msg.value.author != sbot.id) // vote on my msg?
+        updateVoteOnMymsg(msg, link.link)
     },
 
     flag: function (msg) {
       // inbox index
       var link = mlib.link(msg.value.content.flagTopic, 'msg')
-      if (sbot.feed.id != msg.value.author && link && state.mymsgs.indexOf(link.msg) >= 0) {
+      if (sbot.id != msg.value.author && link && state.mymsgs.indexOf(link.link) >= 0) {
         var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
         attachIsRead(row)
         row.author = msg.value.author // inbox index is filtered on read by the friends graph
-        if (follows(sbot.feed.id, msg.value.author))
+        if (follows(sbot.id, msg.value.author))
           emit('index-change', { index: 'inbox' })
       }
     }
@@ -123,8 +122,8 @@ module.exports = function (sbot, db, state, emit) {
 
     // profilePic: link to image
     if ('profilePic' in c) {
-      if (mlib.isLink(c.profilePic, 'ext'))
-        author.self.profilePic = c.profilePic
+      if (mlib.link(c.profilePic, 'blob'))
+        author.self.profilePic = mlib.link(c.profilePic)
       else if (!c.profilePic)
         delete author.self.profilePic
     }
@@ -136,7 +135,7 @@ module.exports = function (sbot, db, state, emit) {
     target = getProfile(target)
     source.assignedTo[target.id] = source.assignedTo[target.id] || {}
     target.assignedBy[source.id] = target.assignedBy[source.id] || {}
-    var userProf = getProfile(sbot.feed.id)
+    var userProf = getProfile(sbot.id)
 
     // flagged: false, true, or an object with {reason: string}
     if ('flagged' in c) { 
@@ -144,7 +143,7 @@ module.exports = function (sbot, db, state, emit) {
       target.assignedBy[source.id].flagged = c.flagged
 
       // track if by local user
-      if (source.id === sbot.feed.id)
+      if (source.id === sbot.id)
         target.flagged = c.flagged
     }
 
@@ -161,11 +160,11 @@ module.exports = function (sbot, db, state, emit) {
       target.assignedBy[source.id].following = c.following
 
       // if from the user, update names (in case un/following changes conflict status)
-      if (source.id == sbot.feed.id)
+      if (source.id == sbot.id)
         rebuildNamesFor(target)
 
       // follows index
-      if (target.id == sbot.feed.id) {
+      if (target.id == sbot.id) {
         // use the follower's id as the key to this index, so we only have 1 entry per other user max
         var row = state.follows.sortedUpsert(msg.value.timestamp, msg.key)
         row.following = c.following
@@ -199,9 +198,9 @@ module.exports = function (sbot, db, state, emit) {
 
     // default to self-assigned name
     var name = profile.self.name
-    if (profile.id !== sbot.feed.id && profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].name) {
+    if (profile.id !== sbot.id && profile.assignedBy[sbot.id] && profile.assignedBy[sbot.id].name) {
       // use name assigned by the local user, if one is given
-      name = profile.assignedBy[sbot.feed.id].name
+      name = profile.assignedBy[sbot.id].name
     }
     if (!name)
       return
@@ -210,7 +209,7 @@ module.exports = function (sbot, db, state, emit) {
     state.names[profile.id] = name
 
     // if following, update id->name map
-    if (profile.id === sbot.feed.id || profile.assignedBy[sbot.feed.id] && profile.assignedBy[sbot.feed.id].following) {
+    if (profile.id === sbot.id || profile.assignedBy[sbot.id] && profile.assignedBy[sbot.id].following) {
       if (!state.ids[name]) { // no conflict?
         // take it
         state.ids[name] = profile.id
@@ -243,7 +242,9 @@ module.exports = function (sbot, db, state, emit) {
 
   function attachIsRead (indexRow, key) {
     key = key || indexRow.key
+    state.pinc()
     db.isread.get(key, function (err, v) {
+      state.pdec()
       indexRow.isread = !!v
     })
   }
@@ -258,12 +259,12 @@ module.exports = function (sbot, db, state, emit) {
   function fn (logkey) {
     state.pinc()
     var key = logkey.value
-    sbot.ssb.get(logkey.value, function (err, value) {
+    sbot.get(logkey.value, function (err, value) {
       var msg = { key: key, value: value }
       try {
         // encrypted? try to decrypt
         if (typeof value.content == 'string' && value.content.slice(-4) == '.box') {
-          value.content = ssbKeys.unbox(value.content, sbot.feed.keys.private)
+          value.content = sbot.crypto.unbox(value.content)
           if (!value.content)
             return state.pdec()
 
@@ -271,12 +272,12 @@ module.exports = function (sbot, db, state, emit) {
           var row = state.inbox.sortedInsert(msg.value.timestamp, msg.key)
           attachIsRead(row)
           row.author = msg.value.author // inbox index is filtered on read by the friends graph
-          if (follows(sbot.feed.id, msg.value.author))
+          if (follows(sbot.id, msg.value.author))
             emit('index-change', { index: 'inbox' })
         }
 
         // collect keys of user's messages
-        if (msg.value.author === sbot.feed.id)
+        if (msg.value.author === sbot.id)
           state.mymsgs.push(msg.key)
 
         // type processing

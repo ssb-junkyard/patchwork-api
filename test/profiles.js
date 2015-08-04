@@ -2,7 +2,7 @@ var multicb = require('multicb')
 var tape    = require('tape')
 var u       = require('./util')
 
-var exthash = 'RYnp9p24dlAPYGhrsFYdGGHIAYM2uM5pr1//RocCF/U=.sha256'
+var blobid = '&RYnp9p24dlAPYGhrsFYdGGHIAYM2uM5pr1//RocCF/U=.sha256'
 
 tape('profiles track self-assigned name and profile pic', function (t) {
   var sbot = u.newserver()
@@ -14,20 +14,21 @@ tape('profiles track self-assigned name and profile pic', function (t) {
     if (err) throw err
 
     var done = multicb()
-    users.alice.add({ type: 'contact', contact: { feed: users.alice.id }, profilePic: { ext: exthash } }, done())
-    users.bob.add({ type: 'contact', contact: { feed: users.bob.id }, profilePic: { ext: exthash } }, done())
-    users.charlie.add({ type: 'contact', contact: { feed: users.charlie.id }, profilePic: { ext: exthash } }, done())
+    users.alice.add({ type: 'contact', contact: users.alice.id, profilePic: blobid }, done())
+    users.bob.add({ type: 'contact', contact: users.bob.id, profilePic: blobid }, done())
+    users.charlie.add({ type: 'contact', contact: users.charlie.id, profilePic: blobid }, done())
     done(function (err) {
       if (err) throw err
 
-      sbot.phoenix.getAllProfiles(function (err, profiles) {
+      sbot.patchwork.getAllProfiles(function (err, profiles) {
         if (err) throw err
         t.equal(profiles[users.alice.id].self.name, 'alice')
         t.equal(profiles[users.bob.id].self.name, 'bob')
         t.equal(profiles[users.charlie.id].self.name, 'charlie')
-        t.equal(profiles[users.alice.id].self.profilePic.ext, exthash)
-        t.equal(profiles[users.bob.id].self.profilePic.ext, exthash)
-        t.equal(profiles[users.charlie.id].self.profilePic.ext, exthash)
+        t.equal(profiles[users.alice.id].self.profilePic.link, blobid)
+        t.equal(profiles[users.bob.id].self.profilePic.link, blobid)
+        t.equal(profiles[users.charlie.id].self.profilePic.link, blobid)
+        sbot.close()
         t.end()
       })
     })
@@ -44,13 +45,13 @@ tape('profiles track follows, names, and flags between users', function (t) {
     if (err) throw err
 
     var done = multicb()
-    users.alice.add({ type: 'contact', contact: { feed: users.bob.id }, name: 'robert' }, done())
-    users.alice.add({ type: 'contact', contact: { feed: users.charlie.id }, flagged: { reason: 'such a jerk!' } }, done())
-    users.bob.add({ type: 'contact', contact: { feed: users.charlie.id }, flagged: { reason: 'dont like him' } }, done())
+    users.alice.add({ type: 'contact', contact: users.bob.id, name: 'robert' }, done())
+    users.alice.add({ type: 'contact', contact: users.charlie.id, flagged: { reason: 'such a jerk!' } }, done())
+    users.bob.add({ type: 'contact', contact: users.charlie.id, flagged: { reason: 'dont like him' } }, done())
     done(function (err) {
       if (err) throw err
 
-      sbot.phoenix.getAllProfiles(function (err, profiles) {
+      sbot.patchwork.getAllProfiles(function (err, profiles) {
         if (err) throw err
         function by(a, b) {
           return profiles[users[a].id].assignedBy[users[b].id]
@@ -82,6 +83,7 @@ tape('profiles track follows, names, and flags between users', function (t) {
         t.equal(to('alice', 'bob').name, 'robert')
         t.equal(by('bob', 'alice').name, 'robert')
 
+        sbot.close()
         t.end()
       })
     })

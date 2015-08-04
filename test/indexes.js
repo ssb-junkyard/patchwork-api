@@ -19,11 +19,12 @@ tape('inbox index includes encrypted messages from followeds', function (t) {
     done(function (err) {
       if (err) throw err
 
-      pull(sbot.phoenix.createInboxStream(), pull.collect(function (err, msgs) {
+      pull(sbot.patchwork.createInboxStream(), pull.collect(function (err, msgs) {
         if (err) throw err
         t.equal(msgs.length, 1)
         t.equal(msgs[0].value.author, users.bob.id)
         t.end()
+        sbot.close()
       }))
     })
   })
@@ -42,16 +43,17 @@ tape('inbox index includes replies to the users posts from followeds', function 
       if (err) throw err
 
       var done = multicb()
-      users.bob.add({ type: 'post', text: 'hello from bob', repliesTo: { msg: msg.key } }, done())
-      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: { msg: msg.key } }, done())
+      users.bob.add({ type: 'post', text: 'hello from bob', repliesTo: msg.key }, done())
+      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: msg.key }, done())
       done(function (err) {
         if (err) throw err
 
-        pull(sbot.phoenix.createInboxStream(), pull.collect(function (err, msgs) {
+        pull(sbot.patchwork.createInboxStream(), pull.collect(function (err, msgs) {
           if (err) throw err
           t.equal(msgs.length, 1)
           t.equal(msgs[0].value.author, users.bob.id)
           t.end()
+          sbot.close()
         }))
       })
     })
@@ -68,16 +70,17 @@ tape('inbox index includes mentions of the user from followeds', function (t) {
     if (err) throw err
 
     var done = multicb()
-    users.bob.add({ type: 'post', text: 'hello from bob', mentions: [{ feed: users.alice.id }] }, done())
-    users.charlie.add({ type: 'post', text: 'hello from charlie', mentions: [{ feed: users.alice.id }] }, done())
+    users.bob.add({ type: 'post', text: 'hello from bob', mentions: [users.alice.id] }, done())
+    users.charlie.add({ type: 'post', text: 'hello from charlie', mentions: [users.alice.id] }, done())
     done(function (err) {
       if (err) throw err
 
-      pull(sbot.phoenix.createInboxStream(), pull.collect(function (err, msgs) {
+      pull(sbot.patchwork.createInboxStream(), pull.collect(function (err, msgs) {
         if (err) throw err
         t.equal(msgs.length, 1)
         t.equal(msgs[0].value.author, users.bob.id)
         t.end()
+        sbot.close()
       }))
     })
   })
@@ -93,34 +96,35 @@ tape('inbox index counts correctly track read/unread', function (t) {
     if (err) throw err
 
     var done = multicb()
-    users.bob.add({ type: 'post', text: 'hello from bob', mentions: [{ feed: users.alice.id }] }, done())
-    users.charlie.add({ type: 'post', text: 'hello from charlie', mentions: [{ feed: users.alice.id }] }, done())
+    users.bob.add({ type: 'post', text: 'hello from bob', mentions: [users.alice.id] }, done())
+    users.charlie.add({ type: 'post', text: 'hello from charlie', mentions: [users.alice.id] }, done())
     done(function (err, msgs) {
       if (err) throw err
       var inboxedMsg = msgs[0][1]
 
-      sbot.phoenix.getIndexCounts(function (err, counts) {
+      sbot.patchwork.getIndexCounts(function (err, counts) {
         if (err) throw err
         t.equal(counts.inbox, 1)
         t.equal(counts.inboxUnread, 1)
 
-        sbot.phoenix.markRead(inboxedMsg.key, function (err) {
+        sbot.patchwork.markRead(inboxedMsg.key, function (err) {
           if (err) throw err
 
-          sbot.phoenix.getIndexCounts(function (err, counts) {
+          sbot.patchwork.getIndexCounts(function (err, counts) {
             if (err) throw err
             t.equal(counts.inbox, 1)
             t.equal(counts.inboxUnread, 0)
 
-            sbot.phoenix.markUnread(inboxedMsg.key, function (err) {
+            sbot.patchwork.markUnread(inboxedMsg.key, function (err) {
               if (err) throw err
 
-              sbot.phoenix.getIndexCounts(function (err, counts) {
+              sbot.patchwork.getIndexCounts(function (err, counts) {
                 if (err) throw err
                 t.equal(counts.inbox, 1)
                 t.equal(counts.inboxUnread, 1)
 
                 t.end()
+                sbot.close()
               })
             })
           })
@@ -143,15 +147,16 @@ tape('vote index includes upvotes on the users posts', function (t) {
       if (err) throw err
 
       var done = multicb()
-      users.bob.add({ type: 'vote', voteTopic: { msg: msg.key }, vote: 1 }, done())
-      users.charlie.add({ type: 'vote', voteTopic: { msg: msg.key }, vote: 1 }, done())
+      users.bob.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
+      users.charlie.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
       done(function (err) {
         if (err) throw err
 
-        pull(sbot.phoenix.createVoteStream(), pull.collect(function (err, msgs) {
+        pull(sbot.patchwork.createVoteStream(), pull.collect(function (err, msgs) {
           if (err) throw err
           t.equal(msgs.length, 2)
           t.end()
+          sbot.close()
         }))
       })
     })
@@ -171,16 +176,17 @@ tape('vote index does not include downvotes, and removes unvotes', function (t) 
       if (err) throw err
 
       var done = multicb()
-      users.bob.add({ type: 'vote', voteTopic: { msg: msg.key }, vote: -1 }, done())
-      users.charlie.add({ type: 'vote', voteTopic: { msg: msg.key }, vote: 1 }, done())
-      users.charlie.add({ type: 'vote', voteTopic: { msg: msg.key }, vote: 0 }, done())
+      users.bob.add({ type: 'vote', voteTopic: msg.key, vote: -1 }, done())
+      users.charlie.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
+      users.charlie.add({ type: 'vote', voteTopic: msg.key, vote: 0 }, done())
       done(function (err) {
         if (err) throw err
 
-        pull(sbot.phoenix.createVoteStream(), pull.collect(function (err, msgs) {
+        pull(sbot.patchwork.createVoteStream(), pull.collect(function (err, msgs) {
           if (err) throw err
           t.equal(msgs.length, 0)
           t.end()
+          sbot.close()
         }))
       })
     })
@@ -200,33 +206,34 @@ tape('vote index counts correctly track read/unread', function (t) {
       if (err) throw err
 
       var done = multicb()
-      users.bob.add({ type: 'vote', voteTopic: { msg: msg.key }, vote: 1 }, done())
-      users.charlie.add({ type: 'vote', voteTopic: { msg: msg.key }, vote: 1 }, done())
+      users.bob.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
+      users.charlie.add({ type: 'vote', voteTopic: msg.key, vote: 1 }, done())
       done(function (err, msgs) {
         if (err) throw err
         var voteMsg = msgs[0][1]
 
-        sbot.phoenix.getIndexCounts(function (err, counts) {
+        sbot.patchwork.getIndexCounts(function (err, counts) {
           if (err) throw err
           t.equal(counts.votes, 2)
           t.equal(counts.votesUnread, 2)
 
-          sbot.phoenix.markRead(voteMsg.key, function (err) {
+          sbot.patchwork.markRead(voteMsg.key, function (err) {
             if (err) throw err
 
-            sbot.phoenix.getIndexCounts(function (err, counts) {
+            sbot.patchwork.getIndexCounts(function (err, counts) {
               if (err) throw err
               t.equal(counts.votes, 2)
               t.equal(counts.votesUnread, 1)
 
-              sbot.phoenix.markUnread(voteMsg.key, function (err) {
+              sbot.patchwork.markUnread(voteMsg.key, function (err) {
                 if (err) throw err
 
-                sbot.phoenix.getIndexCounts(function (err, counts) {
+                sbot.patchwork.getIndexCounts(function (err, counts) {
                   if (err) throw err
                   t.equal(counts.votes, 2)
                   t.equal(counts.votesUnread, 2)
                   t.end()
+                  sbot.close()
                 })
               })
             })
@@ -246,10 +253,11 @@ tape('follow index includes all new followers', function (t) {
   }, function (err, users) {
     if (err) throw err
 
-    pull(sbot.phoenix.createFollowStream(), pull.collect(function (err, msgs) {
+    pull(sbot.patchwork.createFollowStream(), pull.collect(function (err, msgs) {
       if (err) throw err
       t.equal(msgs.length, 2)
       t.end()
+      sbot.close()
     }))
   })
 })
@@ -263,12 +271,13 @@ tape('follow index includes unfollows', function (t) {
   }, function (err, users) {
     if (err) throw err
 
-    users.charlie.add({ type: 'contact', contact: { feed: users.alice.id }, following: false }, function (err) {
+    users.charlie.add({ type: 'contact', contact: users.alice.id, following: false }, function (err) {
       if (err) throw err
-      pull(sbot.phoenix.createFollowStream(), pull.collect(function (err, msgs) {
+      pull(sbot.patchwork.createFollowStream(), pull.collect(function (err, msgs) {
         if (err) throw err
         t.equal(msgs.length, 3)
         t.end()
+        sbot.close()
       }))
     })
   })
@@ -284,28 +293,32 @@ tape('follow index counts correctly track read/unread', function (t) {
     if (err) throw err
     var followMsg = msgs[1][1]
 
-    sbot.phoenix.getIndexCounts(function (err, counts) {
+    console.log('getting indexes 1')
+    sbot.patchwork.getIndexCounts(function (err, counts) {
       if (err) throw err
       t.equal(counts.follows, 2)
       t.equal(counts.followsUnread, 2)
 
-      sbot.phoenix.markRead(followMsg.key, function (err) {
+      console.log('marking read')
+      sbot.patchwork.markRead(followMsg.key, function (err) {
         if (err) throw err
 
-        sbot.phoenix.getIndexCounts(function (err, counts) {
+        console.log('getting indexes 2')
+        sbot.patchwork.getIndexCounts(function (err, counts) {
           if (err) throw err
           t.equal(counts.follows, 2)
           t.equal(counts.followsUnread, 1)
 
-          sbot.phoenix.markUnread(followMsg.key, function (err) {
+          sbot.patchwork.markUnread(followMsg.key, function (err) {
             if (err) throw err
 
-            sbot.phoenix.getIndexCounts(function (err, counts) {
+            sbot.patchwork.getIndexCounts(function (err, counts) {
               if (err) throw err
               t.equal(counts.follows, 2)
               t.equal(counts.followsUnread, 2)
 
               t.end()
+              sbot.close()
             })
           })
         })
@@ -328,16 +341,17 @@ tape('home index includes all non-reply posts', function (t) {
 
       var done = multicb()
       users.bob.add({ type: 'post', text: 'hello from bob' }, done())
-      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: { msg: msg.key } }, done())
+      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: msg.key }, done())
       done(function (err) {
         if (err) throw err
 
-        pull(sbot.phoenix.createHomeStream(), pull.collect(function (err, msgs) {
+        pull(sbot.patchwork.createHomeStream(), pull.collect(function (err, msgs) {
           if (err) throw err
           t.equal(msgs.length, 2)
           t.notEqual(msgs[0].value.author, users.charlie.id)
           t.notEqual(msgs[1].value.author, users.charlie.id)
           t.end()
+          sbot.close()
         }))
       })
     })
@@ -358,15 +372,16 @@ tape('home index includes non-posts with post replies on them', function (t) {
 
       var done = multicb()
       users.bob.add({ type: 'nonpost', text: 'hello from bob' }, done())
-      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: { msg: msg.key } }, done())
+      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: msg.key }, done())
       done(function (err) {
         if (err) throw err
 
-        pull(sbot.phoenix.createHomeStream(), pull.collect(function (err, msgs) {
+        pull(sbot.patchwork.createHomeStream(), pull.collect(function (err, msgs) {
           if (err) throw err
           t.equal(msgs.length, 1)
           t.equal(msgs[0].value.author, users.alice.id)
           t.end()
+          sbot.close()
         }))
       })
     })
