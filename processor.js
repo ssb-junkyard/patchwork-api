@@ -81,8 +81,13 @@ module.exports = function (sbot, db, state, emit) {
     vote: function (msg) {
       // update tallies
       var link = mlib.link(msg.value.content.vote, 'msg')
-      if (link && state.mymsgs.indexOf(link.link) >= 0 && msg.value.author != sbot.id) // vote on my msg?
-        updateVoteOnMymsg(msg, link)
+
+      if (link) {
+        if (msg.value.author == sbot.id)
+          updateMyVote(msg, link)
+        else if (state.mymsgs.indexOf(link.link) >= 0) // vote on my msg?
+          updateVoteOnMymsg(msg, link)
+      }
     },
 
     flag: function (msg) {
@@ -247,6 +252,12 @@ module.exports = function (sbot, db, state, emit) {
         }
       }
     }
+  }
+
+  function updateMyVote (msg, l) {
+    // myvotes index
+    var row = state.myvotes.sortedUpsert(msg.value.timestamp, l.link)
+    row.vote = l.value
   }
 
   function updateVoteOnMymsg (msg, l) {

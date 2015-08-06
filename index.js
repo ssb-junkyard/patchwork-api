@@ -29,6 +29,7 @@ exports.init = function (sbot) {
     home: u.index(), // also has `.isread`
     inbox: u.index(), // also has `.isread` and `.author`
     votes: u.index(), // also has `.isread`, `.vote`, and `.votemsg`
+    myvotes: u.index(), // also has  `.vote`
     follows: u.index(), // also has `.isread` and `.following`
 
     // views
@@ -132,6 +133,10 @@ exports.init = function (sbot) {
   api.createVoteStream = indexStreamFn(state.votes, function (row) { 
     if (row.vote <= 0) return false
     return row.votemsg
+  })
+  api.createMyvoteStream = indexStreamFn(state.myvotes, function (row) { 
+    if (row.vote <= 0) return false
+    return row.key
   })
   api.createFollowStream = indexStreamFn(state.follows)
   api.createHomeStream = indexStreamFn(state.home)
