@@ -1,14 +1,16 @@
-var fs       = require('fs')
-var pull     = require('pull-stream')
-var multicb  = require('multicb')
-var pl       = require('pull-level')
-var pushable = require('pull-pushable')
-var paramap  = require('pull-paramap')
-var cat      = require('pull-cat')
-var Notify   = require('pull-notify')
-var toPull   = require('stream-to-pull-stream')
-var ref      = require('ssb-ref')
-var u        = require('./util')
+var fs          = require('fs')
+var pull        = require('pull-stream')
+var multicb     = require('multicb')
+var pl          = require('pull-level')
+var pushable    = require('pull-pushable')
+var paramap     = require('pull-paramap')
+var cat         = require('pull-cat')
+var Notify      = require('pull-notify')
+var toPull      = require('stream-to-pull-stream')
+var ref         = require('ssb-ref')
+var pathlib     = require('path')
+var NativeImage = require('native-image')
+var u           = require('./util')
 
 exports.name        = 'patchwork'
 exports.version     = '1.0.0'
@@ -254,8 +256,15 @@ exports.init = function (sbot) {
       sbot.blobs.add(function (err, hash) {
         if (err)
           cb(err)
-        else
-          cb(null, hash)
+        else {
+          var ext = pathlib.extname(path)
+          if (ext == '.png' || ext == '.jpg' || ext == '.jpeg') {
+            var res = getImgDim(path)
+            res.hash = hash
+            cb(null, res)
+          } else
+            cb(null, { hash: hash })
+        }
       })
     )
   }
@@ -264,6 +273,10 @@ exports.init = function (sbot) {
       sbot.blobs.get(hash),
       toPull.sink(fs.createWriteStream(path), cb)
     )
+  }
+  function getImgDim (path) {
+    var ni = NativeImage.createFromPath(path)
+    return ni.getSize()
   }
 
   var lookupcodeRegex = /([a-z0-9\/\+\=]+\.[a-z0-9]+)(?:\[via\])?(.+)?/i
