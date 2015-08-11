@@ -11,10 +11,10 @@ module.exports = function (sbot, db, state, emit) {
       var c = msg.value.content
       
       // home index
-      if (!c.repliesTo && !c.recps) {
+      if (!c.root && !c.recps) {
         // not a reply or a targeted message, put in home index
         state.home.sortedUpsert(msg.value.timestamp, msg.key)
-      } else if (mlib.link(c.repliesTo, 'msg')) {
+      } else if (mlib.link(c.root, 'msg')) {
         // a reply, put its *parent* in the home index
         state.pinc()
         u.getRootMsg(sbot, msg, function (err, rootmsg) {
@@ -33,7 +33,7 @@ module.exports = function (sbot, db, state, emit) {
       // inbox index
       if (!by_me) {
         var inboxed = false
-        mlib.links(c.repliesTo, 'msg').forEach(function (link) {
+        mlib.links(c.root, 'msg').forEach(function (link) {
           if (inboxed) return
           // a reply to my messages?
           if (state.mymsgs.indexOf(link.link) >= 0) {

@@ -43,8 +43,8 @@ tape('inbox index includes replies to the users posts from followeds', function 
       if (err) throw err
 
       var done = multicb()
-      users.bob.add({ type: 'post', text: 'hello from bob', repliesTo: msg.key }, done())
-      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: msg.key }, done())
+      users.bob.add({ type: 'post', text: 'hello from bob', root: msg.key, branch: msg.key }, done())
+      users.charlie.add({ type: 'post', text: 'hello from charlie', root: msg.key, branch: msg.key }, done())
       done(function (err) {
         if (err) throw err
 
@@ -341,7 +341,7 @@ tape('home index includes all non-reply posts', function (t) {
 
       var done = multicb()
       users.bob.add({ type: 'post', text: 'hello from bob' }, done())
-      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: msg.key }, done())
+      users.charlie.add({ type: 'post', text: 'hello from charlie', root: msg.key, branch: msg.key }, done())
       done(function (err) {
         if (err) throw err
 
@@ -372,7 +372,7 @@ tape('home index includes non-posts with post replies on them', function (t) {
 
       var done = multicb()
       users.bob.add({ type: 'nonpost', text: 'hello from bob' }, done())
-      users.charlie.add({ type: 'post', text: 'hello from charlie', repliesTo: msg.key }, done())
+      users.charlie.add({ type: 'post', text: 'hello from charlie', root: msg.key, branch: msg.key }, done())
       done(function (err) {
         if (err) throw err
 

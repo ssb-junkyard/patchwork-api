@@ -67,7 +67,7 @@ module.exports.index = function () {
 
 
 module.exports.getRootMsg = function (sbot, msg, cb) {
-  var mid = mlib.link(msg.value.content.thread || msg.value.content.repliesTo, 'msg').link
+  var mid = mlib.link(msg.value.content.root || msg.value.content.branch, 'msg').link
   up()
   function up () {
     sbot.get(mid, function (err, msgvalue) {
@@ -79,7 +79,7 @@ module.exports.getRootMsg = function (sbot, msg, cb) {
         return cb()
 
       // ascend
-      var link = mlib.link(msgvalue.content.thread || msgvalue.content.repliesTo, 'msg')
+      var link = mlib.link(msgvalue.content.root || msgvalue.content.branch, 'msg')
       if (link) {
         mid = link.link
         return up()

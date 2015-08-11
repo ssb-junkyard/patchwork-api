@@ -9,7 +9,6 @@ var Notify      = require('pull-notify')
 var toPull      = require('stream-to-pull-stream')
 var ref         = require('ssb-ref')
 var pathlib     = require('path')
-var NativeImage = require('native-image')
 var u           = require('./util')
 
 exports.name        = 'patchwork'
@@ -275,6 +274,7 @@ exports.init = function (sbot) {
     )
   }
   function getImgDim (path) {
+    var NativeImage = require('native-image')
     var ni = NativeImage.createFromPath(path)
     return ni.getSize()
   }
