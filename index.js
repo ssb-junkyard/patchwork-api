@@ -279,7 +279,7 @@ exports.init = function (sbot) {
     return ni.getSize()
   }
 
-  var lookupcodeRegex = /([a-z0-9\/\+\=]+\.[a-z0-9]+)(?:\[via\])?(.+)?/i
+  var lookupcodeRegex = /(@[a-z0-9\/\+\=]+\.[a-z0-9]+)(?:\[via\])?(.+)?/i
   api.useLookupCode = function (code) {
     var eventPush = pushable()
 
