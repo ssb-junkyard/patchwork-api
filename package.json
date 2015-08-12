@@ -1,6 +1,6 @@
 {
   "name": "ssb-patchwork-api",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "patchwork's rpc api module",
   "main": "index.js",
   "scripts": {
