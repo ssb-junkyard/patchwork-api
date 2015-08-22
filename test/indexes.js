@@ -327,7 +327,7 @@ tape('follow index counts correctly track read/unread', function (t) {
   })
 })
 
-tape('home index includes all non-reply posts', function (t) {
+tape('home index includes all posts', function (t) {
   var sbot = u.newserver()
   u.makeusers(sbot, {
     alice: { follows: ['bob'] }, // Note, does not follow charlie
@@ -347,9 +347,7 @@ tape('home index includes all non-reply posts', function (t) {
 
         pull(sbot.patchwork.createHomeStream(), pull.collect(function (err, msgs) {
           if (err) throw err
-          t.equal(msgs.length, 2)
-          t.notEqual(msgs[0].value.author, users.charlie.id)
-          t.notEqual(msgs[1].value.author, users.charlie.id)
+          t.equal(msgs.length, 3)
           t.end()
           sbot.close()
         }))
@@ -378,8 +376,9 @@ tape('home index includes non-posts with post replies on them', function (t) {
 
         pull(sbot.patchwork.createHomeStream(), pull.collect(function (err, msgs) {
           if (err) throw err
-          t.equal(msgs.length, 1)
-          t.equal(msgs[0].value.author, users.alice.id)
+          t.equal(msgs.length, 2)
+          t.equal(msgs[0].value.author, users.charlie.id)
+          t.equal(msgs[1].value.author, users.alice.id)
           t.end()
           sbot.close()
         }))

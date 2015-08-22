@@ -11,10 +11,11 @@ module.exports = function (sbot, db, state, emit) {
       var c = msg.value.content
       
       // home index
-      if (!c.root && !c.recps) {
-        // not a reply or a targeted message, put in home index
-        state.home.sortedUpsert(msg.value.timestamp, msg.key)
-      } else if (mlib.link(c.root, 'msg')) {
+      if (c.recps)
+        return // skip targeted messages
+
+      state.home.sortedUpsert(msg.value.timestamp, msg.key)
+      if (mlib.link(c.root, 'msg')) {
         // a reply, put its *parent* in the home index
         state.pinc()
         u.getRootMsg(sbot, msg, function (err, rootmsg) {

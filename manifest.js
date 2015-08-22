@@ -27,6 +27,9 @@ module.exports = {
   getProfile: 'async',
   getAllProfiles: 'async',
 
+  getSite: 'async',
+  getSiteLink: 'async',
+
   getNamesById: 'async',
   getName: 'async',
   getIdsByName: 'async',
