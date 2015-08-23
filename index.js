@@ -16,7 +16,7 @@ exports.version     = '1.0.0'
 exports.manifest    = require('./manifest')
 exports.permissions = require('./permissions')
 
-exports.init = function (sbot) {
+exports.init = function (sbot, opts) {
 
   var api = {}
   var phoenixdb = sbot.sublevel('patchwork')
@@ -99,6 +99,12 @@ exports.init = function (sbot) {
 
   api.createEventStream = function () {
     return notify.listen()
+  }
+
+  api.getPaths = function (cb) {
+    cb(null, {
+      site: pathlib.join(opts.path, 'publish')
+    })
   }
 
   api.getMyProfile = function (cb) {

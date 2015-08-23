@@ -1,5 +1,6 @@
 module.exports = {
   createEventStream: 'source',
+  getPaths: 'async',
 
   getIndexCounts: 'async',
   createInboxStream: 'source',
